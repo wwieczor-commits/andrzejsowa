@@ -1,4 +1,4 @@
-/* Planer podróży v1.6 – najpierw prawdziwe loty, potem reszta wyjazdu. © Wojciech Wieczorek */
+/* Planer podróży v1.7 – najpierw prawdziwe loty, potem reszta wyjazdu. © Wojciech Wieczorek */
 'use strict';
 (()=>{
   const L=window.PL,F=window.FL,$=s=>document.querySelector(s),esc=SEARCHUI.esc;
@@ -14,7 +14,7 @@
   function syncMode(){const m=read().dateMode;$('.mode-exact').hidden=m!=='exact';$('.mode-month').hidden=m!=='month';$('.ages').hidden=!(+read().children>0);}
   syncMode();
   const flightFields=['origin','dest','originCountry','destCountry','tripType','dateMode','depart','ret','month','nights','adults','children','childAges','infants','directOnly','cabin'];
-  function changed(e){syncMode();save();if(ctx&&e.target.name){if(flightFields.includes(e.target.name)){ctx=null;$('#out').hidden=true;setReportEnabled(false,'Zmieniłeś wyszukiwanie – kliknij Szukaj.');busy(false);}else {ctx.f={...ctx.f,...read()};ctx.groups=L.buildLinks(ctx.f,ctx.dest,ctx.dt);ctx.plan=L.buildPlan(ctx.f,ctx.dest,ctx.dt);renderTrip();}}if(validationAttempted)validate(read());}
+  function changed(e){syncMode();save();if(ctx&&e.target.name){if(e.target.name==='nights'&&read().tripType==='oneway'){ctx.f={...ctx.f,...read()};ctx.dt=L.computeDates(ctx.f);ctx.groups=ctx.dest.anywhere?[]:L.buildLinks(ctx.f,ctx.dest,ctx.dt);ctx.plan=ctx.dest.anywhere?[]:L.buildPlan(ctx.f,ctx.dest,ctx.dt);renderTrip();loadWeather(ctx);}else if(flightFields.includes(e.target.name)){ctx=null;$('#out').hidden=true;setReportEnabled(false,'Zmieniłeś wyszukiwanie – kliknij Szukaj.');busy(false);}else {ctx.f={...ctx.f,...read()};ctx.groups=L.buildLinks(ctx.f,ctx.dest,ctx.dt);ctx.plan=L.buildPlan(ctx.f,ctx.dest,ctx.dt);renderTrip();}}if(validationAttempted)validate(read());}
   form.addEventListener('input',changed);form.addEventListener('change',e=>{syncMode();save();if(validationAttempted)validate(read());});
   $('#reset').onclick=()=>{localStorage.removeItem(KEY);location.reload();};$('#barLinks').onclick=()=>{updateSearchBar();if($('#barLinks').dataset.mode==='hotels')$('#hotelForm').requestSubmit();else form.requestSubmit();};
   function compute(){const f=read(),dest=L.resolveDest(f.dest),dt=L.computeDates(f);return {f,dest,dt,groups:dest.anywhere?[]:L.buildLinks(f,dest,dt),plan:dest.anywhere?[]:L.buildPlan(f,dest,dt),wx:null,fl:null,created:new Date()};}

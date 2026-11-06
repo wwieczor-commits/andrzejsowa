@@ -19,7 +19,7 @@ window.SEARCHUI=(()=>{
     $('.ages').hidden=!(+f.children>0);
   }
   function place(side,trigger){activeSide=side;open('#routeSheet',trigger);$('#routeTitle').textContent=side==='from'?'Skąd chcesz lecieć?':'Dokąd chcesz polecieć?';$('#fromRoute').hidden=side!=='from';$('#toRoute').hidden=side!=='to';$('#anywhere').hidden=side!=='to';api.fromPicker.close();api.toPicker.close();}
-  function mode(m){const r=$(`[name=dateMode][value=${m}]`);r.checked=true;emit(r);sync();}
+  function mode(m){const r=$(`[name=dateMode][value=${m}]`);if(!r.checked){r.checked=true;emit(r);}sync();}
   function monthTitle(d){return L.MONTHS[d.getMonth()]+' '+d.getFullYear();}
   function drawDays(){const f=read(),year=viewMonth.getFullYear(),mon=viewMonth.getMonth(),first=(new Date(year,mon,1).getDay()+6)%7,last=new Date(year,mon+1,0).getDate();
     $('#calMonthTitle').textContent=monthTitle(viewMonth);$('#calendarGrid').hidden=false;$('#monthGrid').hidden=true;$('.cal-month-nav').hidden=false;
@@ -64,7 +64,7 @@ window.SEARCHUI=(()=>{
     sync();
   }
   function leg(r,back=false){const from=back?r.to:r.from,to=back?r.from:r.to,dep=back?r.inDep:r.outDep,arr=back?r.inArr:r.outArr;return `<div class="ticket-leg"><div class="leg-day">${back?'Powrót':'Wylot'} · ${F.fmtDate(back?r.back:r.out)}</div><div class="leg-times"><div><b>${F.hm(dep)}</b><span>${from}</span></div><div class="leg-line"><small>${F.durationText(back?r.inMinutes:r.outMinutes)}</small><span>━━━━ ✈</span><em>Bezpośredni</em></div><div><b>${F.hm(arr)}</b><span>${to}</span></div></div></div>`;}
-  function card(r,i,extra=''){const infant=+read().infants>0;return `<article class="ticket fl-card${r.exact?' exact':''}" data-total="${r.total}"><header><span class="air-mark">✈</span><b>Ryanair</b>${r.exact?'<span class="ticket-tag">Twoje daty</span>':''}${extra}</header><h4>${esc(AP.byCode(r.to)?.city||r.to)} <small>${r.from} → ${r.to}</small></h4>${leg(r)}${r.back?leg(r,true):''}<footer><div><b class="ticket-price">${F.zl2(r.perPerson)}</b><small>/ os. · ${r.back?'w obie strony':'w jedną stronę'}</small><span>Łącznie ${F.zl2(r.total)}${infant?' + dopłata za niemowlę':''}</span></div><a class="fl-book" href="${esc(r.url)}" target="_blank" rel="noopener">Wybierz →</a></footer>${i>=0?`<button type="button" class="plan-this" data-plan="${i}">Zaplanuj tę ofertę · nocleg i raport →</button>`:''}</article>`;}
+  function card(r,i,extra=''){const infant=+read().infants>0;return `<article class="ticket fl-card${r.exact?' exact':''}" data-total="${r.total}" data-hotel-key="${esc([r.from,r.to,r.out,r.back||''].join('|'))}"><header><span class="air-mark">✈</span><b>Ryanair</b>${r.exact?'<span class="ticket-tag">Twoje daty</span>':''}${extra}</header><h4>${esc(AP.byCode(r.to)?.city||r.to)} <small>${r.from} → ${r.to}</small></h4>${leg(r)}${r.back?leg(r,true):''}<footer><div><b class="ticket-price">${F.zl2(r.perPerson)}</b><small>/ os. · ${r.back?'w obie strony':'w jedną stronę'}</small><span>Łącznie ${F.zl2(r.total)}${infant?' + dopłata za niemowlę':''}</span></div><a class="fl-book" href="${esc(r.url)}" target="_blank" rel="noopener">Wybierz →</a></footer>${i>=0?`<button type="button" class="plan-this" data-plan="${i}">Zaplanuj tę ofertę · nocleg i raport →</button>`:''}</article>`;}
   function sorted(rows,which){const best=rows.length?Math.min(...rows.map(r=>r.total)):1,ds=rows.map(r=>r.duration).filter(x=>x!=null),fast=ds.length?Math.min(...ds):1;return [...rows].sort((a,b)=>which==='fast'?(a.duration??Infinity)-(b.duration??Infinity)||a.total-b.total:which==='best'?(a.total/best*.65+(a.duration??fast*4)/fast*.35)-(b.total/best*.65+(b.duration??fast*4)/fast*.35):a.total-b.total);}
   function resetResults(){sort='cheap';dayFilter='';hourFilter='';carrier=true;shown=8;}
   function resultHTML(c){const fl=c.fl,r=fl.results||[];
@@ -88,6 +88,7 @@ window.SEARCHUI=(()=>{
   }
   function bindResults(c,redraw,onPlan){$$('[data-sort]').forEach(b=>b.onclick=()=>{sort=b.dataset.sort;shown=8;redraw();});$$('[data-strip]').forEach(b=>b.onclick=()=>{dayFilter=b.dataset.strip;shown=8;const y=scrollY;redraw();window.scrollTo(0,y);});
     if($('#hourFilter')){$('#hourFilter').value=hourFilter;$('#hourFilter').onchange=e=>{hourFilter=e.target.value;const y=scrollY;redraw();window.scrollTo(0,y);};$('#carrierFilter').onchange=e=>{carrier=e.target.checked;redraw();};}
+    $$('[data-hotel-key]').forEach(el=>el.addEventListener('click',e=>{if(e.target.closest('[data-plan]'))return;const candidates=[...(c.fl.results||[]),...(c.fl.alternatives?.otherAirports||[]),...(c.fl.alternatives?.nearbyDest||[])],r=candidates.find(r=>[r.from,r.to,r.out,r.back||''].join('|')===el.dataset.hotelKey);if(r)HOTELS.selectFlight(c,r);}));
     if($('#showMore'))$('#showMore').onclick=()=>{shown+=12;redraw();};$$('[data-plan]').forEach(b=>b.onclick=()=>onPlan(c.fl.results[+b.dataset.plan]));
   }
   return {init,sync,focusField,highlight,resultHTML,bindResults,resetResults,esc};

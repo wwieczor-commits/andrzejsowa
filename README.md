@@ -61,3 +61,11 @@ Własny mobilny interfejs inspirowany układem porównywarki hoteli, bez kopiowa
 ### Testy v1.6
 `python3 tests/test_v16.py URL tag` — iPhone 13 i Pixel 7 (Chromium), prawdziwe zapytania Trivago i Ryanair, geokodowanie, kalendarz/goście, brakujące dane, filtry, sortowanie, odczyt / brak ofert / błąd sieci, raport hotelowy i wspólny, HTML/PDF, powracający użytkownik. Bez podstawiania cen.
 Regresja lotów: `python3 tests/test_e2e.py URL tag`; aktualizacja ze starego SW/localStorage: `python3 tests/test_upgrade.py /tmp/v10`. Emulacja iPhone nie zastępuje prawdziwego Safari/WebKit.
+
+## v1.7 – lot automatycznie uzupełnia nocleg
+- Miejscowość, daty i goście noclegu śledzą formularz lotu **bez naciskania dodatkowego przycisku**. Dla całego kraju / Dowolnego miejsca używana jest najtańsza odczytana oferta; kliknięcie innej karty lub „Zaplanuj tę ofertę” zmienia źródło.
+- Po odczycie lotów check-in jest lokalną datą rzeczywistego przylotu (także po północy); check-out jest datą lotu powrotnego. W jedną stronę: przylot + liczba nocy, domyślnie 3. Zmiana samych nocy w podróży w jedną stronę nie usuwa poprawnych wyników lotów ani wybranego miasta.
+- Informacja „Uzupełnione z lotu ✈ …” + „Zmień”; ręczna zmiana miasta/dat/gości/pokoi wstrzymuje nadpisywanie, „Synchronizuj z lotem” przywraca ciągłe automatyczne śledzenie. Filtry hoteli i sortowanie nie wyłączają synchronizacji.
+- Zapamiętywany jest wybór auto/ręcznie, nie wyniki. Starszy zapis v1.6 bez tego znacznika migruje do automatycznego trybu. Miasto jest geokodowane asynchronicznie; starsze odpowiedzi nie nadpisują nowego wyboru. Wyszukanie hoteli poczeka na trwające dopasowanie miasta.
+- Brak automatycznego pobierania cen hoteli: po automatycznym uzupełnieniu wystarczy „Szukaj hoteli”, bez ponownego wpisywania danych. Zmiana kryteriów usuwa wcześniejsze widoczne oferty hoteli. Nadal wyłącznie rzeczywiste odpowiedzi API.
+- Testy synchronizacji: `python3 tests/test_v17.py URL tag` (iPhone/Pixel, realne Ryanair i Trivago); regresja `test_v16.py` i `test_v15.py`. Przypadek daty przylotu po północy jest dodatkowo sprawdzony czystym helperem dat, bez tworzenia fikcyjnej oferty w interfejsie.
