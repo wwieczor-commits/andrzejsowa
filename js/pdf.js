@@ -27,7 +27,7 @@ window.PDFR = (() => {
     const G = id => (groups.find(g => g.id === id) || { items: [] });
     const ad = +f.adults || 1, ch = +f.children || 0, persons = ad + ch;
     const osob = persons === 1 ? '1 osoba' : `${persons} ${persons < 5 ? 'osoby' : 'osób'}`;
-    const orig = f.origin === 'ALL' ? 'Polska (wszystkie lotniska)' : (AIRPORTS.find(a => a.code === f.origin) || {}).name;
+    const orig = AP.label(f.origin);
     const zl = L.zl, F = window.FL, FLs = c.fl && c.fl.results ? c.fl : null;
     const bestFl = FLs && FLs.results.length ? (FLs.results.find(r => r.exact) || FLs.results[0]) : null;
     const WX = wx && wx.days && wx.days.some(d => d.tmax != null) ? wx : null;
@@ -70,7 +70,7 @@ window.PDFR = (() => {
 
     // ===== STRONA 1 =====
     const when = dt.mode === 'month' ? `${L.MONTHS[dt.m - 1]} ${dt.y} · ${dt.nights} nocy` : `${L.dmy(dt.start)} – ${L.dmy(dt.end)}`;
-    header(`Wyjazd ${f.origin === 'ALL' ? 'z Polski' : orig.split(' ')[0]} – ${dest.name}\n${when} – propozycja`, `Dla: Andrzej Sowa · ${osob}${ch ? ` (${ad} dor. + ${ch} dz.)` : ''} · źródła: Google Flights, Ryanair, Wizz Air, Skyscanner, Booking.com · wygenerowano ${L.dmy(new Date())}`, bestFl ? `Najtańszy lot${persons > 1 ? ` (${persons} os.)` : ''}` : 'Loty Ryanair', bestFl ? F.zl2(bestFl.total) : 'brak');
+    header(`Wyjazd ${AP.isAll(f.origin) ? orig : AP.byCode(f.origin)?.city || orig} – ${dest.name}\n${when} – propozycja`, `Trasa: ${orig} → ${dest.name} · Dla: Andrzej Sowa · ${osob}${ch ? ` (${ad} dor. + ${ch} dz.)` : ''} · źródła: Google Flights, Ryanair, Wizz Air, Skyscanner, Booking.com · wygenerowano ${L.dmy(new Date())}`, bestFl ? `Najtańszy lot${persons > 1 ? ` (${persons} os.)` : ''}` : 'Loty Ryanair', bestFl ? F.zl2(bestFl.total) : 'brak');
     h2('Podsumowanie');
     const cards = [bestFl ? ['NAJTAŃSZY ZNALEZIONY LOT (PRAWDZIWA CENA)', F.zl2(bestFl.total), `Ryanair ${bestFl.from} ↔ ${bestFl.to} · ${F.fmtDate(bestFl.out)} ${F.hm(bestFl.outDep)} – ${F.fmtDate(bestFl.back)} ${F.hm(bestFl.inDep)} · ceny z dnia ${F.stamp(FLs.checkedAt)}`, true]
       : ['LOTY', 'Brak lotów', (FLs && FLs.message) || 'Wyszukiwanie nie zwróciło wyników.', true]];
@@ -89,11 +89,11 @@ window.PDFR = (() => {
     h2('Harmonogram');
     const cap = s => s.replace(/^./, x => x.toUpperCase());
     const tl = [
-      [SEA, `${cap(L.DOW_S[dt.start.getDay()])} ${L.dm(dt.start)}, ok. 2–2,5 h przed wylotem`, `Dojazd na lotnisko ${f.origin === 'ALL' ? 'wylotu' : orig + ' (' + f.origin + ')'}`],
-      bestFl ? [ACCENT, `${F.fmtDate(bestFl.out)}, ${F.hm(bestFl.outDep)}`, `Wylot ${bestFl.from} → ${bestFl.to}, Ryanair, przylot ${F.hm(bestFl.outArr)} (najtańsza znaleziona opcja)`] : [ACCENT, `${cap(L.DOW_S[dt.start.getDay()])} ${L.dmy(dt.start)}, godzina wg rezerwacji`, `Wylot ${f.origin === 'ALL' ? 'PL' : f.origin} → ${dest.city}${dest.iata ? ' (' + dest.iata + ')' : ''}`],
+      [SEA, `${cap(L.DOW_S[dt.start.getDay()])} ${L.dm(dt.start)}, ok. 2–2,5 h przed wylotem`, `Dojazd na lotnisko ${AP.isAll(f.origin) ? orig : orig}`],
+      bestFl ? [ACCENT, `${F.fmtDate(bestFl.out)}, ${F.hm(bestFl.outDep)}`, `Wylot ${bestFl.from} → ${bestFl.to}, Ryanair, przylot ${F.hm(bestFl.outArr)} (najtańsza znaleziona opcja)`] : [ACCENT, `${cap(L.DOW_S[dt.start.getDay()])} ${L.dmy(dt.start)}, godzina wg rezerwacji`, `Wylot ${AP.isAll(f.origin) ? AP.country(AP.countryOf(f.origin))?.name : f.origin} → ${dest.city}${dest.iata ? ' (' + dest.iata + ')' : ''}`],
       [SEA, `${L.dm(dt.start)}, po przylocie`, (dest.xfer || 'Transfer z lotniska – najtaniej komunikacją miejską.').split(';')[0]],
       [NAVY, `${L.dm(dt.start)}–${L.dmy(dt.end)}`, `${dt.nights} nocy · ${ACC[f.accType] || 'dowolny'}${f.breakfast === 'tak' ? ' ze śniadaniem' : ''} · ${DIST[f.distance]}`],
-      bestFl ? [ACCENT, `${F.fmtDate(bestFl.back)}, ${F.hm(bestFl.inDep)}`, `Wylot ${bestFl.to} → ${bestFl.from}, Ryanair, przylot ${F.hm(bestFl.inArr)}`] : [ACCENT, `${cap(L.DOW_S[dt.end.getDay()])} ${L.dmy(dt.end)}, godzina wg rezerwacji`, `Wylot ${dest.iata || dest.city} → ${f.origin === 'ALL' ? 'PL' : f.origin}, powrót`]
+      bestFl ? [ACCENT, `${F.fmtDate(bestFl.back)}, ${F.hm(bestFl.inDep)}`, `Wylot ${bestFl.to} → ${bestFl.from}, Ryanair, przylot ${F.hm(bestFl.inArr)}`] : [ACCENT, `${cap(L.DOW_S[dt.end.getDay()])} ${L.dmy(dt.end)}, godzina wg rezerwacji`, `Wylot ${dest.iata || dest.city} → ${AP.isAll(f.origin) ? AP.country(AP.countryOf(f.origin))?.name : f.origin}, powrót`]
     ];
     const y0 = y; color([208, 215, 226], 'setDrawColor'); doc.setLineWidth(0.6);
     tl.forEach(([col, w, t]) => {
@@ -120,7 +120,7 @@ window.PDFR = (() => {
       para(`Prawdziwe ceny z publicznego API Ryanair (najtańszy lot danego dnia), pobrane ${F.stamp(FLs.checkedAt)}. Cena łączna = taryfa za osobę × ${persons}; zwykle bez bagażu rejestrowanego. Wizz Air i inne linie – linki poniżej.`, M, CW, 6.8, 'normal', MUTED);
     }
     h2('Inne wyszukiwarki lotów');
-    const lim = f.origin === 'ALL' ? 12 : 8, fl = G('loty').items, flShow = fl.slice(0, lim);
+    const lim = AP.isAll(f.origin) ? 12 : 8, fl = G('loty').items, flShow = fl.slice(0, lim);
     table(['Trasa / serwis', 'Daty', 'Uwagi', 'Cena', ''], flShow.map(i => [i.label, dt.mode === 'month' ? `${L.MONTHS[dt.m - 1]} ${dt.y}` : `${L.dm(dt.start)} ↔ ${L.dm(dt.end)}`, i.note || '', 'sprawdź w linku', '']),
       { columnStyles: { 0: { cellWidth: 62, textColor: ACCENT, fontStyle: 'bold' }, 1: { cellWidth: 28 }, 3: { cellWidth: 24, textColor: MUTED }, 4: { cellWidth: 22 } }, ...merge(linkCol(4, flShow.map(i => reg(i.label, i.url)), () => 'Rezerwuj →'), nameLinks(0, flShow.map(i => i.url))) });
     fl.slice(lim).forEach(i => reg(i.label, i.url));

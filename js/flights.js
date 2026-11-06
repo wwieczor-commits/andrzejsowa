@@ -57,9 +57,10 @@ window.FL = (() => {
     const { f, dest, dt } = ctx;
     const t0 = new Date();
     const out = { checkedAt: t0, source: 'Ryanair (publiczne API cen)', results: [], exactFound: false, message: '', alternatives: { otherAirports: [], nearbyDest: [] }, errors: 0, searched: [] };
-    if (!dest.iata) { out.message = 'Nie znam kodu lotniska celu – wybierz cel z listy podpowiedzi albo wpisz kod IATA (np. CTA).'; return out; }
-    const destCodes = [dest.iata, ...(dest.alt || [])];
-    const origins = f.origin === 'ALL' ? AIRPORTS.map(a => a.code) : [f.origin];
+    if (!dest.iata && !dest.all) { out.message = 'Nie znam kodu lotniska celu – wybierz cel z listy podpowiedzi albo wpisz kod IATA (np. CTA).'; return out; }
+    const destCodes = dest.all ? dest.airports : [dest.iata, ...(dest.alt || [])];
+    const origins = window.AP.members(f.origin).map(a=>a.code);
+    if(!origins.length||!destCodes.length) {out.message='Wybierz kraj i lotnisko po obu stronach trasy.';return out;}
     const nights = dt.nights;
     // dni wylotu: dokładne ±3 dni albo cały miesiąc
     let days;
@@ -76,7 +77,7 @@ window.FL = (() => {
     origins.forEach((o, i) => { const r = rts[i]; if (!r || r.error) { if (r && r.error) out.errors++; return; } destCodes.forEach(dc => { if (r.some(x => x.code === dc)) pairs.push([o, dc]); }); });
     out.searched = pairs.map(p => p.join('→'));
     const dayTxt = dt.mode === 'month' ? `${L.MONTHS[dt.m - 1]} ${dt.y}` : `${L.dm(addDays(dt.start, -3))}–${L.dm(addDays(dt.start, 3))}`;
-    onProgress(pairs.length ? `Trasy Ryanair: ${out.searched.join(', ')}. Sprawdzam ceny w dniach ${dayTxt}…` : `Ryanair nie lata z ${origins.length > 1 ? 'polskich lotnisk' : origins[0]} do ${destCodes.join('/')} – szukam alternatyw…`);
+    onProgress(pairs.length ? `Trasy Ryanair: ${out.searched.join(', ')}. Sprawdzam ceny w dniach ${dayTxt}…` : `Ryanair nie lata z ${origins.length > 1 ? AP.label(f.origin) : origins[0]} do ${dest.all ? dest.name : destCodes.join('/')} – szukam alternatyw…`);
     let done = 0;
     const res = await pool(pairs.map(([o, dc]) => async () => {
       const [om, im] = await Promise.all([perDay(o, dc, outMonths), perDay(dc, o, inMonths)]);
@@ -86,17 +87,18 @@ window.FL = (() => {
     res.forEach(r => { if (Array.isArray(r)) out.results.push(...r); else out.errors++; });
     out.results.sort((a, b) => a.total - b.total);
     out.exactFound = dt.mode === 'month' ? out.results.length > 0 : out.results.some(r => r.exact);
-    const oName = f.origin === 'ALL' ? 'żadnego lotniska w Polsce' : `${(AIRPORTS.find(a => a.code === f.origin) || {}).name} (${f.origin})`;
+    const oName = AP.label(f.origin);
+    const dName = dest.all ? dest.name : `${dest.city} (${destCodes.join('/')})`;
     const when = dt.mode === 'month' ? `w miesiącu ${L.MONTHS[dt.m - 1]} ${dt.y} (pobyt ${nights} nocy)` : `w wybranych datach (${L.dm(dt.start)}–${L.dmy(dt.end)})`;
     if (!out.exactFound) {
       out.message = out.results.length
-        ? `Brak lotów Ryanair z ${oName} do ${dest.city} (${destCodes.join('/')}) dokładnie ${when} — poniżej najbliższe terminy (±3 dni) z tym samym czasem pobytu.`
-        : `Brak lotów Ryanair z ${oName} do ${dest.city} (${destCodes.join('/')}) ${when} — spróbuj innego lotniska, dat lub miesiąca.`;
+        ? `Brak lotów Ryanair z ${oName} do ${dName} dokładnie ${when} — poniżej najbliższe terminy (±3 dni) z tym samym czasem pobytu.`
+        : `Brak lotów Ryanair z ${oName} do ${dName} ${when} — spróbuj innego lotniska, dat lub miesiąca.`;
       // alternatywy: inne lotniska w Polsce (tylko gdy szukano jednego)
       let others = [], ors = [];
-      if (f.origin !== 'ALL') {
-        onProgress(`Brak lotów z ${f.origin} – sprawdzam inne lotniska w Polsce…`);
-        others = AIRPORTS.map(a => a.code).filter(c => c !== f.origin);
+      if (!AP.isAll(f.origin)) {
+        onProgress(`Brak lotów z ${f.origin} – sprawdzam inne lotniska w kraju ${AP.country(AP.countryOf(f.origin))?.name}…`);
+        others = AP.members('ALL:'+AP.countryOf(f.origin)).map(a => a.code).filter(c => c !== f.origin);
         ors = await pool(others.map(o => () => routes(o)));
         const op = []; others.forEach((o, i) => { const r = ors[i]; if (Array.isArray(r)) destCodes.forEach(dc => { if (r.some(x => x.code === dc)) op.push([o, dc]); }); });
         const ores = await pool(op.map(([o, dc]) => async () => { const [om, im] = await Promise.all([perDay(o, dc, outMonths), perDay(dc, o, inMonths)]); return combos(f, o, dc, om, im, days, nights, exactOut); }));
@@ -113,6 +115,7 @@ window.FL = (() => {
       nres.forEach(r => Array.isArray(r) && out.alternatives.nearbyDest.push(...r));
       out.alternatives.nearbyDest.sort((a, b) => (b.exact - a.exact) || (a.total - b.total));
     }
+    if(out.errors && !out.results.length) {out.failed=true;out.message='Nie udało się sprawdzić wszystkich cen (błąd połączenia z Ryanair) – spróbuj ponownie.';}
     out.doneAt = new Date();
     return out;
   }

@@ -9,14 +9,6 @@
   const form = $('#f');
   $('#ver').textContent = window.APP_VERSION || '';
 
-  // --- wypełnienie list ---
-  $('#origin').innerHTML = `<option value="ALL">Wszystkie lotniska w Polsce</option>` + AIRPORTS.map(a => `<option value="${a.code}">${esc(a.name)} (${a.code})</option>`).join('');
-  $('#origin').value = 'KRK';
-  $('#destList').innerHTML = DEST.map(d => `<option value="${esc(d.name)} (${d.iata})">${esc(d.country)}</option>`).join('');
-  const POP = ['katania', 'malaga', 'alicante', 'barcelona', 'rzym', 'ateny', 'kreta', 'majorka', 'lizbona', 'porto', 'teneryfa', 'antalya', 'burgas'];
-  $('#sugg').innerHTML = POP.map(k => DEST.find(d => d.key === k)).map(d => `<button type="button" data-v="${esc(d.name)} (${d.iata})">${esc(d.city === d.name ? d.name : d.name.split(' (')[0])} · ${d.iata}</button>`).join('');
-  $('#sugg').addEventListener('click', e => { const b = e.target.closest('button'); if (b) { $('#dest').value = b.dataset.v; save(); } });
-
   // domyślne daty: za ok. 3 tygodnie, 7 nocy
   // brak przykładowych dat – użytkownik wybiera sam
   $('#depart').min = L.iso(new Date());
@@ -39,12 +31,14 @@
   function save() { try { localStorage.setItem(KEY, JSON.stringify(read())); } catch (_) { } }
   try { const s = JSON.parse(localStorage.getItem(KEY) || 'null'); if (s) { if (s.depart && s.depart < L.iso(new Date())) { delete s.depart; delete s.ret; } write(s); } } catch (_) { }
 
+  const fromPicker=AP.create('from'), toPicker=AP.create('to');
+  AP.refresh();
   function syncMode() {
     const m = form.querySelector('[name=dateMode]:checked').value;
     form.querySelector('.mode-exact').hidden = m !== 'exact'; form.querySelector('.mode-month').hidden = m !== 'month';
     form.querySelector('.ages').hidden = !(+form.children.value > 0);
   }
-  form.addEventListener('input', () => { syncMode(); save(); if (ctx && ctx.fl && !ctx.fl.loading) { ctx = null; setReportEnabled(false, 'Zmieniłeś dane – kliknij „Szukaj lotów” ponownie.'); } });
+  form.addEventListener('input', () => { syncMode(); save(); if (ctx && ctx.fl) { ctx = null; setReportEnabled(false, 'Zmieniłeś dane – kliknij „Szukaj lotów” ponownie.'); } });
   form.addEventListener('change', () => {
     if ($('#depart').value && (!$('#ret').value || +new Date($('#ret').value) <= +new Date($('#depart').value))) $('#ret').value = L.iso(L.addDays(new Date($('#depart').value), 7));
     syncMode(); save();
@@ -59,7 +53,7 @@
   });
   function sums() {
     const f = read(), S = n => form.querySelector(`[data-sum="${n}"]`);
-    S(1).textContent = `${f.origin === 'ALL' ? 'Wszystkie lotniska' : f.origin} → ${f.dest || 'wybierz cel'}`;
+    S(1).textContent = `${AP.label(f.origin)} → ${f.dest ? AP.label(f.dest) : 'wybierz cel'}`;
     S(2).textContent = f.dateMode === 'exact' ? `${f.depart || '?'} – ${f.ret || '?'}` : `${f.month || '?'}, ${f.nights} nocy`;
     S(3).textContent = `${f.adults} dor.${+f.children ? ` + ${f.children} dz.` : ''}${f.budget ? ` · ${f.budget} zł` : ''}`;
     S(4).textContent = `${ACC[f.accType]} · śniadanie: ${f.breakfast} · ${DIST[f.distance]}`;
@@ -103,7 +97,7 @@
   }
   function renderWeather() {
     const w = ctx.wx;
-    if (!w || !w.days || !w.days.some(d => d.tmax != null)) { $('#weatherCard').innerHTML = `<h3>🌤️ Pogoda</h3><p class="gnote">Brak danych pogodowych (brak internetu lub nieznany cel).</p>`; return; }
+    if (!w || !w.days || !w.days.some(d => d.tmax != null)) { $('#weatherCard').innerHTML = `<h3>🌤️ Pogoda</h3><p class="gnote">${ctx.dest.all ? 'Wybrano cały kraj – prognozę sprawdź po wyborze konkretnego miasta.' : 'Brak danych pogodowych (brak internetu lub nieznany cel).'}</p>`; return; }
     $('#weatherCard').innerHTML = `<h3>🌤️ Pogoda ${w.kind === 'forecast' ? '<span class="tag-est">prognoza</span>' : '<span class="tag-est">typowa / szacunek</span>'}</h3>
       <div class="wx-strip">${w.days.map(d => `<div class="wx-day"><div class="wd">${L.dm(d.date)}</div><div class="wt">${d.tmax != null ? Math.round(d.tmax) + '°/' + Math.round(d.tmin) + '°' : '–'}</div><div class="ws">${d.rain != null ? (w.kind === 'forecast' ? 'deszcz ' : 'dni z deszczem ') + d.rain + '%' : ''}</div></div>`).join('')}</div>
       <p class="src">${esc(w.source)}${w.sea ? ` · morze ok. ${Math.round(w.sea)}°C (te same dni rok wcześniej)` : ''}. Dane: Open-Meteo.com (CC BY 4.0).</p>`;
@@ -117,7 +111,7 @@
   function flCard(r, extra = '') {
     const n = F.pax(ctx.f);
     return `<div class="fl-card${r.exact ? ' exact' : ''}" data-total="${r.total}">
-      <div class="fl-top"><div><span class="fl-air">✈️ ${esc(r.airline)} · bez przesiadek</span>${r.exact ? '<span class="fl-badge">Twoje daty</span>' : ''}${extra}</div>
+      <div class="fl-top"><div><span class="fl-air">✈️ ${esc(r.airline)} · bez przesiadek</span><small class="fl-route">${esc(AP.byCode(r.from)?.city || r.from)} ↔ ${esc(AP.byCode(r.to)?.city || r.to)}</small>${r.exact ? '<span class="fl-badge">Twoje daty</span>' : ''}${extra}</div>
       <div><div class="fl-price">${F.zl2(r.total)}</div><div class="fl-pp">${n > 1 ? `${F.zl2(r.perPerson)} / os. × ${n}` : 'za osobę, tam i z powrotem'}</div></div></div>
       ${legHtml('Wylot', r.out, r.outDep, r.outArr, r.from, r.to)}
       ${legHtml('Powrót', r.back, r.inDep, r.inArr, r.to, r.from)}
@@ -163,7 +157,7 @@
       h += `<div class="fl-alt">`;
       if (A.otherAirports.length) {
         const best = {}; A.otherAirports.forEach(x => { if (!best[x.from]) best[x.from] = x; });
-        h += `<h4>💡 Z innych lotnisk w Polsce</h4>` + Object.values(best).slice(0, 4).map(x => flCard(x, '') + `<button class="btn ghost use" data-origin="${x.from}">Szukaj z ${esc((AIRPORTS.find(a => a.code === x.from) || {}).name || x.from)} (${x.from})</button>`).join('');
+        h += `<h4>💡 Z innych lotnisk w kraju</h4>` + Object.values(best).slice(0, 4).map(x => flCard(x, '') + `<button class="btn ghost use" data-origin="${x.from}">Szukaj z ${esc(AP.byCode(x.from)?.city || x.from)} (${x.from})</button>`).join('');
       }
       if (A.nearbyDest.length) {
         const best = {}; A.nearbyDest.forEach(x => { const k = x.from + x.to; if (!best[k]) best[k] = x; });
@@ -174,17 +168,45 @@
     h += `<p class="fl-note">Wyszukiwanie obejmuje loty bezpośrednie Ryanair (najtańszy lot danego dnia). Wizz Air i inne linie – sprawdź linkami poniżej. Cena łączna = taryfa za osobę × liczba osób, bez bagażu rejestrowanego; ostateczną cenę pokaże strona przewoźnika.</p>`;
     el.innerHTML = h;
     el.querySelectorAll('.use').forEach(b => b.onclick = () => {
-      if (b.dataset.origin) $('#origin').value = b.dataset.origin;
-      if (b.dataset.dest) { const d = DEST.find(x => x.iata === b.dataset.dest || (x.alt || []).includes(b.dataset.dest)); $('#dest').value = d ? `${d.name} (${d.iata})` : b.dataset.dest; }
+      if (b.dataset.origin) fromPicker.choose(b.dataset.origin);
+      if (b.dataset.dest) toPicker.choose(b.dataset.dest);
       save(); sums(); run().then(() => $('#flightsCard').scrollIntoView({ behavior: 'smooth', block: 'start' }));
     });
   }
 
+  let validationAttempted=false;
+  function validate(f, focus=false) {
+    const errors=[];
+    const err=(selector,msg)=>errors.push({el:form.querySelector(selector),msg});
+    if(!AP.members(f.origin).length) err(AP.country(f.originCountry)?'#fromAirportSearch':'#fromCountrySearch','Wybierz kraj i lotnisko wylotu (albo wszystkie lotniska w kraju).');
+    if(!AP.members(f.dest).length) err(AP.country(f.destCountry)?'#toAirportSearch':'#toCountrySearch','Wybierz kraj i lotnisko docelowe (albo wszystkie lotniska w kraju).');
+    const today=L.iso(new Date());
+    if(f.dateMode==='exact') {
+      if(!f.depart)err('#depart','Wybierz datę wylotu albo tryb „Miesiąc + długość”.');
+      else if(f.depart<today)err('#depart','Data wylotu nie może być w przeszłości.');
+      if(!f.ret)err('#ret','Wybierz datę powrotu.');
+      else if(f.depart&&f.ret<=f.depart)err('#ret','Powrót musi być po dacie wylotu.');
+      else if(f.depart&&(+new Date(f.ret)-+new Date(f.depart))/864e5>30)err('#ret','Wybierz pobyt do 30 nocy.');
+    }else {
+      if(!f.month)err('#month','Wybierz miesiąc wyjazdu.');
+      else if(f.month<today.slice(0,7))err('#month','Wybierz bieżący lub przyszły miesiąc.');
+      if(!Number.isInteger(+f.nights)||+f.nights<1||+f.nights>30)err('[name=nights]','Podaj długość pobytu: 1–30 nocy.');
+    }
+    if(!f.adults||!Number.isInteger(+f.adults)||+f.adults<1||+f.adults>9)err('[name=adults]','Podaj liczbę dorosłych: 1–9.');
+    if(f.children===''||!Number.isInteger(+f.children)||+f.children<0||+f.children>6)err('[name=children]','Podaj liczbę dzieci: 0–6.');
+    form.querySelectorAll('.invalid').forEach(el=>{el.classList.remove('invalid');el.removeAttribute('aria-invalid');el.removeAttribute('aria-describedby');});
+    form.querySelectorAll('.field-error').forEach(el=>el.remove());
+    errors.forEach(({el,msg},i)=>{if(!el)return;el.classList.add('invalid');el.setAttribute('aria-invalid','true');const hint=document.createElement('span');hint.className='field-error';hint.id='validation-'+i;hint.textContent=msg;el.setAttribute('aria-describedby',hint.id);el.insertAdjacentElement('afterend',hint);});
+    if(errors.length){$('#err').textContent='Uzupełnij dane: '+errors.map(e=>e.msg).join(' ');$('#err').hidden=false;
+      if(focus){const el=errors[0].el;const step=el.closest('details');if(step)step.open=true;el.scrollIntoView({behavior:'auto',block:'center'});el.focus({preventScroll:true});}
+    }else $('#err').hidden=true;
+    return !errors.length;
+  }
+  form.addEventListener('input',()=>{if(validationAttempted)validate(read());});
+  form.addEventListener('change',()=>{if(validationAttempted)validate(read());});
   async function run() {
-    const f = read();
-    if (!f.dest || !f.dest.trim()) { steps[0].open = true; $('#err').textContent = 'Wpisz cel podróży (np. Katania) albo wybierz z podpowiedzi.'; $('#err').hidden = false; $('#dest').focus(); return null; }
-    if (f.dateMode === 'exact' && (!f.depart || !f.ret || f.ret <= f.depart)) { steps[1].open = true; $('#err').textContent = !f.depart || !f.ret ? 'Wybierz datę wylotu i powrotu (albo przełącz na „Miesiąc + długość”).' : 'Sprawdź daty: powrót musi być po wylocie.'; $('#err').hidden = false; return null; }
-    if (f.dateMode === 'month' && !f.month) { steps[1].open = true; $('#err').textContent = 'Wybierz miesiąc wyjazdu.'; $('#err').hidden = false; return null; }
+    const f = read();validationAttempted=true;
+    if(!validate(f,true))return null;
     $('#err').hidden = true; save();
     ctx = compute(); render();
     const my = ctx;
@@ -225,5 +247,5 @@
     navigator.serviceWorker.addEventListener('controllerchange', () => { if (hadController) { const n = $('#updBar'); if (n) n.hidden = false; } });
   }
   $('#updBtn') && $('#updBtn').addEventListener('click', () => location.reload());
-  window.__planer = { run, ready, get ctx() { return ctx; } };
+  window.__planer = { run, ready, fromPicker, toPicker, get ctx() { return ctx; } };
 })();

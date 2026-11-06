@@ -28,8 +28,8 @@ window.REPORT = (() => {
     const G = id => (groups.find(g => g.id === id) || { items: [] });
     const ad = +f.adults || 1, ch = +f.children || 0, persons = ad + ch;
     const osob = persons === 1 ? '1 osoba' : `${persons} ${persons < 5 ? 'osoby' : 'osób'}`;
-    const orig = f.origin === 'ALL' ? 'Polska (wszystkie lotniska)' : (AIRPORTS.find(a => a.code === f.origin) || {}).name;
-    const origCode = f.origin === 'ALL' ? 'PL' : f.origin;
+    const orig = AP.label(f.origin);
+    const origCode = AP.isAll(f.origin) ? AP.country(AP.countryOf(f.origin))?.name : f.origin;
     const destCode = dest.iata || '';
     const range = `${L.dm(dt.start)}–${L.dmy(dt.end)}`;
     const when = dt.mode === 'month' ? `${L.MONTHS[dt.m - 1]} ${dt.y} · ${dt.nights} nocy` : `${L.dmy(dt.start)} – ${L.dmy(dt.end)}`;
@@ -40,7 +40,7 @@ window.REPORT = (() => {
 
     // --- Harmonogram ---
     const tl = [];
-    tl.push(['xfer', `${L.DOW_S[dt.start.getDay()].replace(/^./, x => x.toUpperCase())} ${L.dm(dt.start)}, ok. 2–2,5 h przed wylotem`, `Dojazd na lotnisko ${f.origin === 'ALL' ? 'wylotu' : orig + ' (' + f.origin + ')'} – pociąg/autobus lotniskowy lub auto`]);
+    tl.push(['xfer', `${L.DOW_S[dt.start.getDay()].replace(/^./, x => x.toUpperCase())} ${L.dm(dt.start)}, ok. 2–2,5 h przed wylotem`, `Dojazd na lotnisko ${AP.isAll(f.origin) ? orig : orig} – pociąg/autobus lotniskowy lub auto`]);
     tl.push(['', `${L.DOW_S[dt.start.getDay()].replace(/^./, x => x.toUpperCase())} ${L.dmy(dt.start)}, godzina wg rezerwacji`, `Wylot ${origCode} → ${dest.city}${destCode ? ' (' + destCode + ')' : ''} – przewoźnik i cena: linki w tabeli „Loty”`]);
     tl.push(['xfer', `${L.dm(dt.start)}, po przylocie`, (dest.xfer || 'Transfer z lotniska do noclegu – najtaniej komunikacją miejską (Google Maps).').split(';')[0]]);
     tl.push(['stay', `${L.dm(dt.start)}–${L.dmy(dt.end)}`, `${dt.nights} ${dt.nights === 1 ? 'noc' : dt.nights < 5 ? 'noce' : 'nocy'} · ${ACC[f.accType] || 'dowolny'}${f.breakfast === 'tak' ? ' ze śniadaniem' : ''} · ${DIST[f.distance]}`]);
@@ -53,12 +53,12 @@ window.REPORT = (() => {
 
     // --- Loty ---
     const fl = G('loty').items;
-    const flRows = fl.slice(0, f.origin === 'ALL' ? 12 : 8).map((i, n) => {
+    const flRows = fl.slice(0, AP.isAll(f.origin) ? 12 : 8).map((i, n) => {
       const src = i.label.split(' – ')[0];
       return `<tr${n === 0 ? ' class="highlight"' : ''}><td>${A(reg(i.label, i.url), esc(`${(i.label.match(/\b([A-Z]{3})\b/) || [])[1] || origCode} ↔ ${(i.label.match(/→ ([A-Z]{3})/) || [])[1] || destCode || dest.city}`))}</td><td>${dt.mode === 'month' ? `${L.MONTHS[dt.m - 1]} ${dt.y}` : `${L.DOW_S[dt.start.getDay()]} ${L.dm(dt.start)} ↔ ${L.DOW_S[dt.end.getDay()]} ${L.dm(dt.end)}`}</td><td>${esc(src)}</td><td>${esc(i.note || '')}</td><td class="chk">sprawdź w linku</td><td>${A(i.url, 'Rezerwuj →', 'book-link')}</td></tr>`;
     }).join('');
-    const flMore = fl.length > (f.origin === 'ALL' ? 12 : 8) ? `<p class="footnote">+ ${fl.length - (f.origin === 'ALL' ? 12 : 8)} kolejnych linków (Ryanair / Wizz Air dla każdego lotniska) – w aplikacji i na liście linków na końcu raportu.</p>` : '';
-    fl.slice(f.origin === 'ALL' ? 12 : 8).forEach(i => reg(i.label, i.url));
+    const flMore = fl.length > (AP.isAll(f.origin) ? 12 : 8) ? `<p class="footnote">+ ${fl.length - (AP.isAll(f.origin) ? 12 : 8)} kolejnych linków (Ryanair / Wizz Air dla każdego lotniska) – w aplikacji i na liście linków na końcu raportu.</p>` : '';
+    fl.slice(AP.isAll(f.origin) ? 12 : 8).forEach(i => reg(i.label, i.url));
 
     // --- Prawdziwe loty ---
     const F = window.FL, FLs = c.fl && c.fl.results ? c.fl : null;
@@ -106,8 +106,8 @@ window.REPORT = (() => {
     const food = G('jedzenie').items; food.forEach(i => reg(i.label, i.url));
 
     const p1 = `
-<div class="header"><div><h1>Wyjazd ${esc(f.origin === 'ALL' ? 'z Polski' : orig.split(' ')[0])} – ${esc(dest.name)}<br>${esc(when)} – propozycja</h1>
-<div class="subtitle">Dla: Andrzej Sowa · ${osob}${ch ? ` (${ad} dor. + ${ch} dz.)` : ''} · źródła: Google Flights, Ryanair, Wizz Air, Skyscanner, Booking.com · wygenerowano ${today}</div></div>
+<div class="header"><div><h1>Wyjazd ${esc(AP.isAll(f.origin) ? orig : AP.byCode(f.origin)?.city || orig)} – ${esc(dest.name)}<br>${esc(when)} – propozycja</h1>
+<div class="subtitle">Trasa: ${orig} → ${dest.name} · Dla: Andrzej Sowa · ${osob}${ch ? ` (${ad} dor. + ${ch} dz.)` : ''} · źródła: Google Flights, Ryanair, Wizz Air, Skyscanner, Booking.com · wygenerowano ${today}</div></div>
 <div class="badge">${bestFl ? `Najtańszy lot${persons > 1 ? ` (${persons} os.)` : ''}<span>${esc(F.zl2(bestFl.total))}</span>` : FLs ? 'Loty Ryanair<span>brak</span>' : 'Loty<span>—</span>'}</div></div>
 <h2>Podsumowanie</h2>
 <div class="summary">

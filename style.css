@@ -158,3 +158,21 @@ details.fs[open] .sum{display:none}
 .bar-hint:empty{display:none}
 .upd{position:fixed;left:12px;right:12px;top:calc(10px + env(safe-area-inset-top));z-index:60;background:var(--navy);color:#fff;border-radius:12px;padding:10px 12px;display:flex;align-items:center;justify-content:space-between;gap:10px;font-weight:600;font-size:14px;box-shadow:0 8px 24px rgba(0,0,0,.25);max-width:560px;margin:0 auto}
 .upd[hidden]{display:none}
+/* v1.3: ten sam wybór kraju + lotniska po obu stronach trasy */
+.route-picker{background:#f7f9fc;border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:14px}
+.route-picker h3{margin:0 0 10px;font-size:17px}
+.picker-country,.picker-airport{margin-bottom:10px}
+.route-picker input[type=search]{background:#fff;margin-top:5px}
+.pick-menu{background:#fff;border:1.5px solid var(--line);border-radius:10px;margin-top:5px;max-height:310px;overflow:auto;overscroll-behavior:contain;box-shadow:0 6px 15px #0e1a2b12;scroll-margin:20px}
+.pick-menu button{font:inherit;text-align:left;color:var(--navy);border:0;border-bottom:1px solid #edf0f4;background:#fff;width:100%;display:flex;align-items:center;gap:10px;padding:12px;min-height:62px;cursor:pointer}
+.pick-menu button:hover,.pick-menu button.active{background:#fff5f3;box-shadow:inset 3px 0 var(--acc)}
+.pick-menu button[aria-selected=true]{background:#eef6ff}
+.pick-menu b{display:block;font-size:15px}.pick-menu small{display:block;font-size:12px;color:var(--muted);margin-top:3px}
+.pick-menu em{font-style:normal;background:var(--navy);color:#fff;padding:2px 6px;border-radius:5px;font-size:12px;white-space:nowrap;margin-left:5px}
+.pick-flag{font-size:23px;flex-shrink:0}.pick-empty{padding:12px;color:var(--muted);font-size:14px}
+.picked{font-weight:600;font-size:13px;color:#05603a}.picked:empty{display:none}
+.pick-menu[hidden]{display:none}
+.invalid{border-color:#d92d20!important;background:#fff5f3!important;box-shadow:0 0 0 2px #d92d2018}
+.field-error{display:block;color:#b42318;font-weight:600;font-size:12px;margin:4px 0 3px}
+.fl-price{white-space:nowrap;font-size:20px}.fl-top>div:last-child{flex-shrink:0}.fl-air{font-size:12px}
+.fl-route{display:block;font-size:12px;color:var(--muted);margin-top:3px}

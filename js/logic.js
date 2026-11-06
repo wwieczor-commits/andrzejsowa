@@ -17,7 +17,11 @@ window.PL = (() => {
   const round10 = n => Math.round(n / 10) * 10;
 
   function resolveDest(text) {
-    const d = find(text);
+    const A = window.AP;
+    if (A && A.isAll(text)) {const cc=A.countryOf(text);const c=A.country(cc);return {name:`${c?.name || cc} · wszystkie lotniska`,city:c?.name||cc,q:c?.en||cc,country:c?.name,countryCode:cc,all:true,airports:A.members(text).map(a=>a.code)};}
+    const a = A && A.find(text);
+    const d = a ? window.PD.DEST.find(d=>d.iata===a.code) : find(text);
+    if (a) return {...(d||{}),known:!!d,name:d?.name||a.city,city:a.city,q:a.enCity||a.city,iata:a.code,alt:[],country:a.countryName,countryCode:a.country,lat:a.lat,lon:a.lon,airportName:a.airportName};
     if (d) return { ...d, known: true };
     const t = (text || '').trim();
     const code = (t.match(/\(([A-Za-z]{3})\)/) || t.match(/^([A-Za-z]{3})$/) || [])[1];
@@ -40,7 +44,7 @@ window.PL = (() => {
     return { mode: 'month', start, end: addDays(start, nights), nights, sample: true, y, m, monthStart: new Date(y, m - 1, 1), monthEnd: new Date(y, m, 0) };
   }
 
-  function origins(f) { return f.origin === 'ALL' ? AIRPORTS : AIRPORTS.filter(a => a.code === f.origin); }
+  function origins(f) { return window.AP ? AP.members(f.origin) : f.origin === 'ALL' ? AIRPORTS : AIRPORTS.filter(a => a.code === f.origin); }
 
   function buildLinks(f, dest, dt) {
     const ad = Math.max(1, +f.adults || 1), ch = Math.max(0, +f.children || 0);
@@ -56,7 +60,7 @@ window.PL = (() => {
     // Google Flights rozumie tylko jedno lotnisko w q= (sprawdzone) – w trybie „miesiąc” daty przykładowe + kalendarz cen na stronie
     const gfUrl = (from) => `https://www.google.com/travel/flights?q=${E(`Flights to ${gTo} from ${from} on ${out} through ${back} ${paxTxt}`)}&curr=PLN&hl=pl&gl=PL`;
     const orig = origins(f);
-    orig.forEach(a => fl.push({ label: `Google Flights – z ${a.name} (${a.code})`, url: gfUrl(a.code), note: dt.sample ? 'ceny w PLN · przykładowe daty – otwórz kalendarz cen' : 'ceny w PLN', perAirport: f.origin === 'ALL' }));
+    orig.forEach(a => fl.push({ label: `Google Flights – z ${a.name} (${a.code})`, url: gfUrl(a.code), note: dt.sample ? 'ceny w PLN · przykładowe daty – otwórz kalendarz cen' : 'ceny w PLN', perAirport: window.AP ? AP.isAll(f.origin) : f.origin === 'ALL' }));
 
     const sky = (from) => {
       const base = `https://www.skyscanner.pl/transport/loty/${from.toLowerCase()}/${(dest.iata || '').toLowerCase()}/`;
@@ -66,16 +70,17 @@ window.PL = (() => {
       return `${base}${s(dt.start)}/${s(dt.end)}/?${p}`;
     };
     if (dest.iata) {
-      fl.push({ label: f.origin === 'ALL' ? 'Skyscanner – z całej Polski' : `Skyscanner – z ${orig[0].code}`, url: sky(f.origin === 'ALL' ? 'pl' : orig[0].code), note: dt.mode === 'month' ? 'widok całego miesiąca (PLN)' : 'PLN' });
+      fl.push({ label: AP.isAll(f.origin) ? `Skyscanner – ${AP.label(f.origin)}` : `Skyscanner – z ${orig[0].code}`, url: sky(AP.isAll(f.origin) ? AP.countryOf(f.origin) : orig[0].code), note: dt.mode === 'month' ? 'widok całego miesiąca (PLN)' : 'PLN' });
       const destCodes = [dest.iata, ...(dest.alt || [])];
       orig.forEach(a => destCodes.forEach(dc => {
         const ry = dt.mode === 'month'
           ? `https://www.ryanair.com/pl/pl/fare-finder?originIata=${a.code}&destinationIata=${dc}&isReturn=true&adults=${ad}&teens=0&children=${ch}&infants=0&dateOut=${iso(dt.monthStart)}&dateIn=${iso(addDays(dt.monthEnd, dt.nights))}&daysTrip=${dt.nights}&isExactDate=false&currency=PLN`
           : `https://www.ryanair.com/pl/pl/trip/flights/select?adults=${ad}&teens=0&children=${ch}&infants=0&dateOut=${out}&dateIn=${back}&isConnectedFlight=false&isReturn=true&discount=0&promoCode=&originIata=${a.code}&destinationIata=${dc}`;
-        fl.push({ label: `Ryanair – ${a.code} → ${dc}`, url: ry, note: dt.mode === 'month' ? 'wyszukiwarka najtańszych dni w miesiącu' : 'wybrane daty', perAirport: f.origin === 'ALL', airline: 'ryanair' });
-        fl.push({ label: `Wizz Air – ${a.code} → ${dc}`, url: `https://wizzair.com/pl-pl/booking/select-flight/${a.code}/${dc}/${out}/${back}/${ad}/${ch}/0/null`, note: dt.sample ? 'przykładowe daty – zmień w kalendarzu Wizz' : 'wybrane daty', perAirport: f.origin === 'ALL', airline: 'wizz' });
+        fl.push({ label: `Ryanair – ${a.code} → ${dc}`, url: ry, note: dt.mode === 'month' ? 'wyszukiwarka najtańszych dni w miesiącu' : 'wybrane daty', perAirport: window.AP ? AP.isAll(f.origin) : f.origin === 'ALL', airline: 'ryanair' });
+        fl.push({ label: `Wizz Air – ${a.code} → ${dc}`, url: `https://wizzair.com/pl-pl/booking/select-flight/${a.code}/${dc}/${out}/${back}/${ad}/${ch}/0/null`, note: dt.sample ? 'przykładowe daty – zmień w kalendarzu Wizz' : 'wybrane daty', perAirport: window.AP ? AP.isAll(f.origin) : f.origin === 'ALL', airline: 'wizz' });
       }));
     } else {
+      fl.push({label:'Ryanair – wyszukiwarka',url:'https://www.ryanair.com/pl/pl',note:'Kraj jako cel – gotowe linki do rezerwacji są przy znalezionych lotach.'});
       fl.push({ label: 'Skyscanner – wyszukaj cel', url: `https://www.skyscanner.pl/?currency=PLN&market=PL&locale=pl-PL`, note: 'podaj kod IATA w formularzu, aby link był pełny' });
     }
     groups.push({ id: 'loty', title: 'Loty', icon: 'plane', items: fl, note: 'Kursy i ceny pokazują strony przewoźników. Nie każde lotnisko ma połączenie do celu – pusta lista = brak lotów w tych dniach.' });
@@ -209,6 +214,7 @@ window.PL = (() => {
     return g ? { lat: g.latitude, lon: g.longitude, label: `${g.name}, ${g.country || ''}` } : null;
   }
   async function weather(dest, dt) {
+    if(dest.all) return null; // kraju nie traktujemy jak jednego miejsca z jedną prognozą
     const g = await geocode(dest); if (!g) return null;
     const today = new Date(); today.setHours(0, 0, 0, 0);
     const days = Array.from({ length: dt.nights + 1 }, (_, i) => addDays(dt.start, i));
@@ -236,7 +242,7 @@ window.PL = (() => {
     return res;
   }
 
-  function nearbyNote(f) { return f.origin === 'ALL' ? 'wszystkie lotniska w Polsce' : (AIRPORTS.find(a => a.code === f.origin) || {}).name; }
+  function nearbyNote(f) { return window.AP ? AP.label(f.origin) : f.origin === 'ALL' ? 'wszystkie lotniska w Polsce' : (AIRPORTS.find(a => a.code === f.origin) || {}).name; }
 
   return { resolveDest, computeDates, buildLinks, buildPlan, estimate, weather, iso, dm, dmy, zl, MONTHS, MONTHS_GEN, DOW_S, nearbyNote, childAges, addDays };
 })();

@@ -9,8 +9,8 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="assets/logo.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="assets/icons/icon-180.png">
-<link rel="stylesheet" href="assets/fonts.css?v=1.2">
-<link rel="stylesheet" href="style.css?v=1.2">
+<link rel="stylesheet" href="assets/fonts.css?v=1.3">
+<link rel="stylesheet" href="style.css?v=1.3">
 </head>
 <body>
 <header class="hero">
@@ -30,16 +30,11 @@
     <details class="fs" data-step="1" open>
       <summary><h2><span class="num">1</span> Skąd i dokąd</h2><span class="sum" data-sum="1"></span></summary>
       <div class="fs-body">
-      <div class="grid2">
-        <label>Lotnisko wylotu
-          <select name="origin" id="origin"></select>
-        </label>
-        <label>Cel podróży
-          <input name="dest" id="dest" list="destList" placeholder="np. Katania (CTA) albo kod IATA" required>
-          <datalist id="destList"></datalist>
-        </label>
+      <div class="route-pickers">
+        <div class="route-picker"><h3>🛫 Skąd</h3><input type="hidden" name="origin" id="origin"><input type="hidden" name="originCountry" id="originCountry" value="pl"><div id="fromPicker"></div></div>
+        <div class="route-picker"><h3>🛬 Dokąd</h3><input type="hidden" name="dest" id="dest"><input type="hidden" name="destCountry" id="destCountry"><div id="toPicker"></div></div>
       </div>
-      <div class="chips sugg" id="sugg" aria-label="Popularne tanie kierunki"></div>
+      <p class="src">Szukaj też po mieście, nazwie lotniska, kodzie IATA lub kraju (np. „kat”, „Malaga”, „Italy”). Lista obejmuje sieć Ryanair i wszystkie polskie lotniska.</p>
     <button type="button" class="btn ghost next" data-next="2">Dalej ↓</button></div>
     </details>
 
@@ -150,12 +145,14 @@
   <div class="ver" id="ver"></div>
 </footer>
 
-<script src="js/version.js?v=1.2"></script>
-<script src="js/data.js?v=1.2"></script>
-<script src="js/logic.js?v=1.2"></script>
-<script src="js/flights.js?v=1.2"></script>
-<script src="js/report.js?v=1.2"></script>
-<script src="js/pdf.js?v=1.2"></script>
-<script src="js/app.js?v=1.2"></script>
+<script src="js/version.js?v=1.3"></script>
+<script src="js/data.js?v=1.3"></script>
+<script src="assets/data/airports-fallback.js?v=1.3"></script>
+<script src="js/airports.js?v=1.3"></script>
+<script src="js/logic.js?v=1.3"></script>
+<script src="js/flights.js?v=1.3"></script>
+<script src="js/report.js?v=1.3"></script>
+<script src="js/pdf.js?v=1.3"></script>
+<script src="js/app.js?v=1.3"></script>
 </body>
 </html>
