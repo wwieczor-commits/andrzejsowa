@@ -17,14 +17,14 @@ def airport(p,side,code):
 def country_all(p,side,q,cc):
  p.click('#'+('fromOpen' if side=='from' else 'toOpen'));p.locator('#'+side+'CountrySearch').fill(q);p.locator('#'+side+'Countries [data-cc='+cc+']').click();p.locator('#'+side+'Airports [data-value="ALL:'+cc+'"]').click()
 def search(p):
- p.click('#barLinks');p.wait_for_function('()=>__planer.ctx && __planer.ctx.fl && !__planer.ctx.fl.loading',timeout=120000);return p.evaluate('()=>__planer.ctx.fl')
+ p.locator('#go').scroll_into_view_if_needed();p.click('#go');p.wait_for_function('()=>__planer.ctx && __planer.ctx.fl && !__planer.ctx.fl.loading',timeout=120000);return p.evaluate('()=>__planer.ctx.fl')
 def snap(p,name,part):p.screenshot(path=f'{S}/{TAG}-{name}-{part}.png')
 with sync_playwright() as w:
  b=w.chromium.launch(executable_path='/usr/bin/google-chrome',args=['--no-sandbox'])
  for name,opt in [('iphone',w.devices['iPhone 13']),('pixel',w.devices['Pixel 7']),('desktop',{'viewport':{'width':1280,'height':900}})]:
   print('==',name,flush=True);c=b.new_context(**opt,locale='pl-PL',timezone_id='Europe/Warsaw',accept_downloads=True);p=c.new_page();errs=[];requests=[]
   p.on('pageerror',lambda e:errs.append(str(e)));p.on('request',lambda r:requests.append(r.url))
-  p.goto(U,wait_until='networkidle');ok('v1.5' in p.inner_text('#ver'),'footer v1.5')
+  p.goto(U,wait_until='networkidle');ok('v1.6' in p.inner_text('#ver'),'footer v1.6')
   ok(not p.is_visible('#out') and p.is_disabled('#genReport'),'no auto report or results')
   ok(p.locator('.search-panel .search-field').count()==5,'compact origin/destination/date/pax buttons')
   snap(p,name,'search-panel');p.click('#go');p.wait_for_timeout(100)
@@ -41,7 +41,7 @@ with sync_playwright() as w:
   ok('powrotu' in p.inner_text('#calendarTitle'),'calendar switches to return direction')
   p.locator('[data-day="2026-11-22"]').click();p.locator('#calendarSheet').evaluate('(e)=>e.scrollTop=0');snap(p,name,'calendar-prices')
   p.click('#calendarDone');ok(p.input_value('#depart')=='2026-11-16' and p.input_value('#ret')=='2026-11-22','taps prefill dates')
-  p.click('#paxOpen');p.locator('[name=adults]').fill('2');p.locator('[name=children]').fill('1');p.locator('[name=childAges]').fill('7');p.locator('[name=infants]').fill('1');snap(p,name,'passengers');p.click('#paxDone')
+  p.click('#paxOpen');p.locator('#f [name=adults]').fill('2');p.locator('#f [name=children]').fill('1');p.locator('#f [name=childAges]').fill('7');p.locator('#f [name=infants]').fill('1');snap(p,name,'passengers');p.click('#paxDone')
   ok('4 osób' in p.inner_text('#paxValue'),'passenger sheet: adults children infants')
   p.evaluate('window.scrollTo(0,0)');snap(p,name,'search-filled')
   fl=search(p);rr=fl['results'];ok(len(rr)>0 and not fl.get('failed'),'real KRK to CTA round-trip results')
@@ -68,7 +68,7 @@ with sync_playwright() as w:
   # Scan twelve months from real public fare finder, choose a month (not a made-up "cheapest" value)
   p.click('#departOpen');p.click('[data-cal=cheapest]');p.wait_for_function("()=>document.querySelector('#calStatus').textContent.includes('Sprawdzono 12 miesięcy')",timeout=120000)
   ok(p.locator('.month-tile').count()==12 and p.locator('.month-tile.low').count()>=1,'cheapest month scans 12 months and marks actual cheapest returned fare')
-  p.locator('#calendarSheet').evaluate('(e)=>e.scrollTop=0');snap(p,name,'cheapest-month');p.locator('[data-month="2027-02"]').click();p.locator('[name=nights]').fill('5');p.click('#calendarDone')
+  p.locator('#calendarSheet').evaluate('(e)=>e.scrollTop=0');snap(p,name,'cheapest-month');p.locator('[data-month="2027-02"]').click();p.locator('#f [name=nights]').fill('5');p.click('#calendarDone')
   fl=search(p);ok(len(fl['results'])>0 and all(x['out'].startswith('2027-02') for x in fl['results']),'whole month real search')
   # Existing country-wide behavior still supported
   country_all(p,'from','Poland','pl');airport(p,'to','CTA');fl=search(p);ok(len({x['from'] for x in fl['results']})>1,'all Polish airports -> Catania supported')

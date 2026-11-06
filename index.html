@@ -4,18 +4,18 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Andrzej Sowa · Planer tanich wyjazdów</title>
-<meta name="description" content="Planer tanich wyjazdów: gotowe linki do lotów, noclegów, transferów, skuterów i rowerów, plan dnia po dniu i raport PDF.">
+<meta name="description" content="Prawdziwe wyniki lotów Ryanair i noclegów Trivago w PLN, porównywarki hoteli, plan podróży i raport PDF.">
 <meta name="theme-color" content="#0e1a2b">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="assets/logo.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="assets/icons/icon-180.png">
-<link rel="stylesheet" href="assets/fonts.css?v=1.5">
-<link rel="stylesheet" href="style.css?v=1.5">
+<link rel="stylesheet" href="assets/fonts.css?v=1.6">
+<link rel="stylesheet" href="style.css?v=1.6">
 </head>
 <body>
 <header class="hero">
   <div class="hero-inner"><a class="brand" href="./" aria-label="Andrzej Sowa – strona główna"><img src="assets/logo.svg" alt="" width="40" height="40"><span><strong>Andrzej Sowa</strong><small>Twój kierunek: taniej</small></span></a>
-  <h1>Mały budżet.<br>Wielki świat<span>.</span></h1><p>Znajdź swój lot. Resztę zaplanujesz potem.</p></div>
+  <h1>Mały budżet.<br>Wielki świat<span>.</span></h1><p>Loty i hotele. Prawdziwe ceny, własny plan.</p><nav class="travel-nav" aria-label="Co chcesz znaleźć"><a href="#f">✈ Loty</a><a href="#hotelSection">▣ Hotele</a></nav></div>
 </header>
 <main class="wrap">
 <form id="f" autocomplete="off" novalidate>
@@ -112,6 +112,7 @@
     </div></details>
   </section>
 </form>
+<section id="hotelSection" aria-label="Wyszukiwarka hoteli"></section>
 </main>
 
 <div class="overlay" id="reportView" hidden>
@@ -140,16 +141,17 @@
   <div class="ver" id="ver"></div>
 </footer>
 
-<script src="js/version.js?v=1.5"></script>
-<script src="js/data.js?v=1.5"></script>
-<script src="assets/data/airports-fallback.js?v=1.5"></script>
-<script src="js/airports.js?v=1.5"></script>
-<script src="js/logic.js?v=1.5"></script>
-<script src="js/flights.js?v=1.5"></script>
-<script src="js/other-flights.js?v=1.5"></script>
-<script src="js/report.js?v=1.5"></script>
-<script src="js/pdf.js?v=1.5"></script>
-<script src="js/search-ui.js?v=1.5"></script>
-<script src="js/app.js?v=1.5"></script>
+<script src="js/version.js?v=1.6"></script>
+<script src="js/data.js?v=1.6"></script>
+<script src="assets/data/airports-fallback.js?v=1.6"></script>
+<script src="js/airports.js?v=1.6"></script>
+<script src="js/logic.js?v=1.6"></script>
+<script src="js/flights.js?v=1.6"></script>
+<script src="js/other-flights.js?v=1.6"></script>
+<script src="js/hotels.js?v=1.6"></script>
+<script src="js/report.js?v=1.6"></script>
+<script src="js/pdf.js?v=1.6"></script>
+<script src="js/search-ui.js?v=1.6"></script>
+<script src="js/app.js?v=1.6"></script>
 </body>
 </html>

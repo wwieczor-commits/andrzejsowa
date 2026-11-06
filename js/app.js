@@ -1,4 +1,4 @@
-/* Planer podróży v1.5 – najpierw prawdziwe loty, potem reszta wyjazdu. © Wojciech Wieczorek */
+/* Planer podróży v1.6 – najpierw prawdziwe loty, potem reszta wyjazdu. © Wojciech Wieczorek */
 'use strict';
 (()=>{
   const L=window.PL,F=window.FL,$=s=>document.querySelector(s),esc=SEARCHUI.esc;
@@ -16,7 +16,7 @@
   const flightFields=['origin','dest','originCountry','destCountry','tripType','dateMode','depart','ret','month','nights','adults','children','childAges','infants','directOnly','cabin'];
   function changed(e){syncMode();save();if(ctx&&e.target.name){if(flightFields.includes(e.target.name)){ctx=null;$('#out').hidden=true;setReportEnabled(false,'Zmieniłeś wyszukiwanie – kliknij Szukaj.');busy(false);}else {ctx.f={...ctx.f,...read()};ctx.groups=L.buildLinks(ctx.f,ctx.dest,ctx.dt);ctx.plan=L.buildPlan(ctx.f,ctx.dest,ctx.dt);renderTrip();}}if(validationAttempted)validate(read());}
   form.addEventListener('input',changed);form.addEventListener('change',e=>{syncMode();save();if(validationAttempted)validate(read());});
-  $('#reset').onclick=()=>{localStorage.removeItem(KEY);location.reload();};$('#barLinks').onclick=()=>form.requestSubmit();
+  $('#reset').onclick=()=>{localStorage.removeItem(KEY);location.reload();};$('#barLinks').onclick=()=>{updateSearchBar();if($('#barLinks').dataset.mode==='hotels')$('#hotelForm').requestSubmit();else form.requestSubmit();};
   function compute(){const f=read(),dest=L.resolveDest(f.dest),dt=L.computeDates(f);return {f,dest,dt,groups:dest.anywhere?[]:L.buildLinks(f,dest,dt),plan:dest.anywhere?[]:L.buildPlan(f,dest,dt),wx:null,fl:null,created:new Date()};}
   function summary(){const {f,dest,dt}=ctx;$('#summary').innerHTML=`<div><h3>${esc(AP.label(f.origin))} ${f.tripType==='oneway'?'→':'↔'} ${esc(dest.name)}</h3><p>${dt.mode==='month'?`${L.MONTHS[dt.m-1]} ${dt.y}${f.tripType==='oneway'?'':' · '+dt.nights+' nocy'}`:L.dmy(dt.start)+(f.tripType==='oneway'?' · w jedną stronę':' – '+L.dmy(dt.end))} · ${+f.adults+ +f.children+ +f.infants} os.</p></div><div class="badge" id="bestBadge">Najtańszy lot<b>szukam…</b>Ryanair</div>`;$('#out').hidden=false;}
   function renderTrip() {
@@ -47,8 +47,9 @@
   }
 
 
-  function busy(on){$('#go').disabled=on;$('#barLinks').disabled=on;$('#go').textContent=on?'Szukam lotów…':'🔎 Szukaj';}
-  function setReportEnabled(on,why){['#genReport','#pdf'].forEach(id=>{$(id).disabled=!on;$(id).title=on?'':why||'Najpierw wyszukaj loty';});$('#barHint').textContent=on?'':why||'Raport i PDF po wyszukaniu lotów.';}
+  function updateSearchBar(){const h=$('#hotelSection'),hotel=h&&h.getBoundingClientRect().top<innerHeight*.55&&!!$('#hotelForm');$('#barLinks').dataset.mode=hotel?'hotels':'flights';$('#barLinks').textContent=hotel?'🔎 Hotele':'🔎 Szukaj';$('#barLinks').disabled=hotel?!!$('#hotelGo')?.disabled:$('#go').disabled;}
+  function busy(on){$('#go').disabled=on;$('#go').textContent=on?'Szukam lotów…':'🔎 Szukaj';updateSearchBar();}
+  function setReportEnabled(on,why){on=!!on||!!window.HOTELS?.reportReady();if($('#go').disabled||$('#hotelGo')?.disabled){on=false;why='Trwa wyszukiwanie lotów lub hoteli…';}['#genReport','#pdf'].forEach(id=>{$(id).disabled=!on;$(id).title=on?'':why||'Najpierw wyszukaj loty';});$('#barHint').textContent=on?'':why||'Raport i PDF po wyszukaniu lotów lub hoteli.';}
   setReportEnabled(false);
   function externalPanel(c){const selected=OTHERFLIGHTS.forContext(c);if(!selected)return '<div class="external-flights"><h3>Sprawdź też inne linie</h3><p>Wybierz konkretny kierunek z wyników, aby dostać linki Wizz Air, Skyscanner i Google Flights.</p></div>';
     const origins=AP.members(c.f.origin),destinations=c.f.dest==='ANY'?[...new Map((c.fl?.results||[]).map(r=>[r.to,AP.byCode(r.to)])).values()].filter(Boolean):AP.members(c.f.dest);
@@ -64,7 +65,7 @@
     renderTrip();
     if(+c.f.budget>0&&best){$('#budgetCard').hidden=false;$('#budgetCard').innerHTML=`<h3>Budżet wyjazdu</h3><p>Twój budżet: ${L.zl(c.f.budget)} · loty ${F.zl2(best.total)}${+c.f.infants?' + dopłata za niemowlę':''}. Pozostałe ceny sprawdź w linkach.</p>`;}
   }
-  async function selectTrip(r){const old=ctx;fromPicker.choose(r.from,false);toPicker.choose(r.to,false);$('[name=dateMode][value=exact]').checked=true;$('#depart').value=r.out;$('#ret').value=r.back||'';save();syncMode();SEARCHUI.sync();ctx=compute();ctx.fl={...old.fl,results:[{...r,exact:true}],exactFound:true,message:'Wybrana oferta z prawdziwego wyszukiwania.',subset:false,alternatives:{otherAirports:[],nearbyDest:[]}};summary();SEARCHUI.resetResults();renderFlights();loadWeather(ctx);$('#restOptions').open=true;$('#restOptions').scrollIntoView({behavior:'smooth'});}
+  async function selectTrip(r){const old=ctx;fromPicker.choose(r.from,false);toPicker.choose(r.to,false);$('[name=dateMode][value=exact]').checked=true;$('#depart').value=r.out;$('#ret').value=r.back||'';save();syncMode();SEARCHUI.sync();ctx=compute();ctx.fl={...old.fl,results:[{...r,exact:true}],exactFound:true,message:'Wybrana oferta z prawdziwego wyszukiwania.',subset:false,alternatives:{otherAirports:[],nearbyDest:[]}};summary();SEARCHUI.resetResults();renderFlights();HOTELS.prefill(ctx);loadWeather(ctx);$('#restOptions').open=true;$('#restOptions').scrollIntoView({behavior:'smooth'});}
   function validate(f,focus=false){const errors=[],err=(s,msg)=>errors.push({el:$(s),msg});
     if(!AP.members(f.origin).length)err(AP.country(f.originCountry)?'#fromAirportSearch':'#fromCountrySearch','Wybierz kraj i lotnisko wylotu lub wszystkie lotniska w kraju.');
     if(f.dest!=='ANY'&&!AP.members(f.dest).length)err(AP.country(f.destCountry)?'#toAirportSearch':'#toCountrySearch','Wybierz cel lub Dowolne miejsce.');
@@ -76,32 +77,32 @@
     if(!f.adults||!Number.isInteger(+f.adults)||+f.adults<1||+f.adults>9)err('[name=adults]','Podaj 1–9 dorosłych.');if(f.children===''||!Number.isInteger(+f.children)||+f.children<0||+f.children>6)err('[name=children]','Podaj 0–6 dzieci.');
     const ages=String(f.childAges||'').trim().split(/[ ,;]+/).filter(Boolean).map(Number);if(+f.children&&(ages.length!==+f.children||ages.some(x=>!Number.isInteger(x)||x<2||x>15)))err('[name=childAges]','Podaj wiek każdego dziecka (2–15 lat), po przecinku.');
     if(f.infants===''||!Number.isInteger(+f.infants)||+f.infants<0||+f.infants>+f.adults)err('[name=infants]','Niemowlęta: maksymalnie jedno na dorosłego.');
-    $$('.invalid').forEach(e=>{e.classList.remove('invalid');e.removeAttribute('aria-invalid');e.removeAttribute('aria-describedby');});$$('.field-error').forEach(e=>e.remove());
+    [...form.querySelectorAll('.invalid')].forEach(e=>{e.classList.remove('invalid');e.removeAttribute('aria-invalid');e.removeAttribute('aria-describedby');});[...form.querySelectorAll('.field-error')].forEach(e=>e.remove());
     errors.forEach(({el,msg},i)=>{el.classList.add('invalid');el.setAttribute('aria-invalid','true');const s=document.createElement('span');s.className='field-error';s.id='error-'+i;s.textContent=msg;el.setAttribute('aria-describedby',s.id);el.after(s);});SEARCHUI.highlight(errors);
     $('#err').hidden=!errors.length;$('#err').textContent=errors.length?'Uzupełnij dane: '+errors.map(x=>x.msg).join(' '):'';if(focus&&errors.length)SEARCHUI.focusField(errors[0].el);return !errors.length;
   }
   const $$=s=>[...document.querySelectorAll(s)];
   function loadWeather(my){my.wxPromise=my.dest.anywhere?Promise.resolve():L.weather(my.dest,my.dt).then(w=>my.wx=w).catch(()=>my.wx=null).finally(()=>{if(ctx===my)renderWeather();});}
   async function run(){const f=read();validationAttempted=true;if(!validate(f,true))return null;save();ctx=compute();summary();SEARCHUI.resetResults();const my=ctx;my.fl={loading:true,progress:'Sprawdzam trasy i ceny Ryanair…'};busy(true);setReportEnabled(false,'Trwa wyszukiwanie prawdziwych cen…');renderFlights();
-    my.flPromise=F.search(my,m=>{if(ctx===my&&my.fl.loading){my.fl.progress=m;if($('#flProg'))$('#flProg').textContent=m;}}).then(r=>my.fl=r).catch(()=>my.fl={failed:true}).finally(()=>{if(ctx===my){busy(false);renderFlights();}});loadWeather(my);return my;
+    my.flPromise=F.search(my,m=>{if(ctx===my&&my.fl.loading){my.fl.progress=m;if($('#flProg'))$('#flProg').textContent=m;}}).then(r=>my.fl=r).catch(()=>my.fl={failed:true}).finally(()=>{if(ctx===my){busy(false);renderFlights();HOTELS.prefill(my);}});loadWeather(my);return my;
   }
   form.onsubmit=async e=>{e.preventDefault();if(await run())$('#summary').scrollIntoView({behavior:'smooth',block:'start'});};
-  async function ready(){if(!ctx||!ctx.fl||ctx.fl.loading||ctx.fl.failed||ctx.dest.anywhere)return null;await Promise.race([Promise.all([ctx.wxPromise,ctx.flPromise]),new Promise(r=>setTimeout(r,30000))]);return ctx;}
+  async function ready(){if(!ctx||!ctx.fl||ctx.fl.loading||ctx.fl.failed||ctx.dest.anywhere)return HOTELS.reportReady()?{hotelOnly:true,hotel:HOTELS.snapshot(),f:{},dest:{},dt:{},groups:[],plan:[]}:null;await Promise.race([Promise.all([ctx.wxPromise,ctx.flPromise]),new Promise(r=>setTimeout(r,30000))]);return {...ctx,hotel:HOTELS.snapshot()};}
   // --- raport HTML (A4) ---
-  let lastHtml = '';
+  let lastHtml = '', lastReportCtx = null;
   $('#genReport').addEventListener('click', async () => {
     const b = $('#genReport'); b.classList.add('loading'); b.textContent = '⏳ Raport…';
-    try { const c = await ready(); if (!c) { alert('Najpierw wyszukaj loty (przycisk „Szukaj lotów”).'); return; } lastHtml = window.REPORT.html(c); const fr = $('#reportFrame'); fr.srcdoc = lastHtml; $('#reportView').hidden = false; document.body.style.overflow = 'hidden'; }
+    try { const c = await ready(); if (!c) { alert('Najpierw wyszukaj loty lub hotele.'); return; } lastReportCtx=c; lastHtml = window.REPORT.html(c); const fr = $('#reportFrame'); fr.srcdoc = lastHtml; $('#reportView').hidden = false; document.body.style.overflow = 'hidden'; }
     finally { b.classList.remove('loading'); b.textContent = '📄 Raport'; }
   });
   $('#closeReport').addEventListener('click', () => { $('#reportView').hidden = true; document.body.style.overflow = ''; });
   $('#printReport').addEventListener('click', () => { const w = $('#reportFrame').contentWindow; w.focus(); w.print(); });
   $('#htmlReport').addEventListener('click', () => {
-    const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([lastHtml], { type: 'text/html' })); a.download = window.REPORT.fileName(ctx) + '.html'; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+    const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([lastHtml], { type: 'text/html' })); a.download = window.REPORT.fileName(lastReportCtx) + '.html'; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 4000);
   });
   async function doPdf(btn) {
     const old = btn.textContent; btn.textContent = '⏳ PDF…'; btn.classList.add('loading');
-    try { const c = await ready(); if (!c) { alert('Najpierw wyszukaj loty (przycisk „Szukaj lotów”).'); return; } await window.PDFR.download(c); }
+    try { const c = await ready(); if (!c) { alert('Najpierw wyszukaj loty lub hotele.'); return; } await window.PDFR.download(c); }
     catch (e) { console.error(e); alert('Nie udało się utworzyć PDF: ' + e.message); }
     finally { btn.textContent = old; btn.classList.remove('loading'); }
   }
@@ -116,4 +117,6 @@
   $('#updBtn') && $('#updBtn').addEventListener('click', () => location.reload());
   window.__planer = { run, ready, fromPicker, toPicker, read, get ctx() { return ctx; } };
   SEARCHUI.init({read,fromPicker,toPicker});
+  HOTELS.init(()=>{setReportEnabled(ctx&&ctx.fl&&!ctx.fl.loading&&!ctx.fl.failed&&!ctx.dest.anywhere);updateSearchBar();});
+  let barTick=false;addEventListener('scroll',()=>{if(!barTick){barTick=true;requestAnimationFrame(()=>{barTick=false;updateSearchBar();});}},{passive:true});updateSearchBar();
 })();

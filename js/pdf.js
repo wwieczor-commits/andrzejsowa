@@ -68,6 +68,24 @@ window.PDFR = (() => {
     const merge = (...h) => ({ didParseCell: d => h.forEach(x => x.didParseCell && x.didParseCell(d)), didDrawCell: d => h.forEach(x => x.didDrawCell && x.didDrawCell(d)) });
     const allLinks = []; const reg = (l, u) => { allLinks.push([l, u]); return u; };
 
+    function finish(){
+    const n = doc.getNumberOfPages();
+    for (let i = 1; i <= n; i++) { doc.setPage(i); font('normal', 6.5, MUTED); text('© Wojciech Wieczorek · Andrzej Sowa · Planer tanich wyjazdów', M, 291); text(`str. ${i}/${n}`, W - M, 291, { align: 'right' }); }
+    doc.setProperties({ title: `${window.REPORT.fileName(c)}`, author: 'Wojciech Wieczorek', subject: 'Planer tanich wyjazdów – Andrzej Sowa', creator: 'Andrzej Sowa · Planer' });
+    return doc;
+    }
+    function hotelTable(s){
+      para(HOTELS.summary(s.config),M,CW,8,'bold');
+      para(HOTELS.filterText(s.config),M,CW,7,'normal',MUTED);
+      para(`Ceny z dnia ${F.stamp(s.checkedAt)} (Europe/Warsaw). Punkt odległości: ${s.referenceName||'—'}; w linii prostej, nie dojazd. Centrum = przybliżony punkt miasta.`,M,CW,7,'normal',MUTED);
+      if(s.failed)para('Nie udało się pobrać cen Trivago. Brak odczytu nie oznacza braku wolnych noclegów.',M,CW,8,'bold');
+      else if(!s.items.length)para('Brak ofert Trivago spełniających filtry. Zmień daty, filtry albo sprawdź inne serwisy.',M,CW,8,'bold');
+      else table(['Obiekt / ocena','Za noc / pobyt · PLN','Warunki / odległość',''],s.items.map(h=>{const d=h.deals[0];return [h.name+'\n'+(h.stars?h.stars+'★ · ':'')+(h.rating?h.rating+'/10 · ':'')+h.location,d.price_per_night+'/noc\n'+(d.price_per_stay||'Suma: sprawdź')+' za pobyt\n'+d.advertiser,(d.price_attributes||[]).map(a=>a.name).join(' · ')+(h.distance!==null?'\n'+h.distance.toFixed(1).replace('.',',')+' km (linia prosta)':''),''];}),{columnStyles:{0:{cellWidth:57},1:{cellWidth:44},3:{cellWidth:23}},...linkCol(3,s.items.map(h=>h.deals[0].url),()=> 'Sprawdź →')});
+      para('Źródło: oficjalny publiczny MCP Trivago; maks. 25 zwróconych obiektów. Cena za noc i za pobyt są cytowane osobno. Podatki, opłaty, warunki anulowania i cenę dla całej grupy potwierdź na stronie oferty. Nic nie zarezerwowano ani nie opłacono.',M,CW,7,'normal',MUTED);
+      h2('Porównywarki hoteli – linki');const pp=HOTELS.providers(s.config,s);table(['Serwis','Zakres linku',''],pp.map(p=>[p.name,p.note,'']),{columnStyles:{0:{cellWidth:38},2:{cellWidth:23}},...linkCol(2,pp.map(p=>p.url),()=> 'Otwórz →')});
+    }
+    if(c.hotelOnly){header('Hotele · '+c.hotel.config.destination,'Dla Andrzeja Sowy · prawdziwe oferty, nie rezerwacja',APP_VERSION,'Hotele');hotelTable(c.hotel);return finish();}
+
     // ===== STRONA 1 =====
     const one=f.tripType==='oneway';
     const when = dt.mode === 'month' ? `${L.MONTHS[dt.m - 1]} ${dt.y} · ${dt.nights} nocy` : one?`${L.dmy(dt.start)} · w jedną stronę · plan pobytu ${dt.nights} nocy`:`${L.dmy(dt.start)} – ${L.dmy(dt.end)}`;
@@ -85,7 +103,7 @@ window.PDFR = (() => {
       font('normal', 6.8, best ? [200, 208, 220] : [51, 65, 85]); text(doc.splitTextToSize(b, cw - 6).slice(0, 3), x + 3, y + 14.5);
     });
     y += 24;
-    para(`W raporcie są tylko prawdziwe bazowe ceny lotów i Twoje dane. Niemowlęta: ${+f.infants||0}; ich dopłaty nie są wliczone. Ceny noclegów i atrakcji sprawdź w linkach – aplikacja ich nie zgaduje.`, M, CW, 6.8, 'normal', MUTED);
+    para(`W raporcie są tylko prawdziwe bazowe ceny lotów i Twoje dane. Niemowlęta: ${+f.infants||0}; ich dopłaty nie są wliczone. Ceny hoteli w sekcji Trivago są odczytane z serwisu. Bez wyszukania hoteli: tylko linki. Atrakcje sprawdź samodzielnie.`, M, CW, 6.8, 'normal', MUTED);
 
     h2('Harmonogram');
     const cap = s => s.replace(/^./, x => x.toUpperCase());
@@ -140,6 +158,8 @@ window.PDFR = (() => {
     table(['Wyszukiwanie', 'Typ', 'Śniadanie', 'Odległość', 'Cena', ''], ai.map(i => [i.label, ACC[f.accType] || 'dowolny', f.breakfast === 'tak' || i.kind === 'bf' ? 'tak' : f.breakfast === 'nie' ? 'nie' : 'obojętne', DIST[f.distance], 'sprawdź', '']),
       { columnStyles: { 0: { cellWidth: 66, textColor: ACCENT, fontStyle: 'bold' }, 4: { textColor: MUTED }, 5: { cellWidth: 20 } }, ...merge(linkCol(5, ai.map(i => reg(i.label, i.url)), () => 'Szukaj →'), nameLinks(0, ai.map(i => i.url))) });
     para(`${osob}, ${L.dmy(dt.start)}–${L.dmy(dt.end)}${dt.sample ? ' (daty przykładowe)' : ''}. Nic nie zostało zarezerwowane ani opłacone – to tylko linki do wyszukiwarek. Opłata turystyczna może dojść na miejscu.`, M, CW, 6.8, 'normal', MUTED);
+
+    if(c.hotel){doc.addPage();y=M;header('Hotele · '+c.hotel.config.destination,'Oferty z Twojego wyszukiwania hoteli — daty i goście mogą różnić się od formularza lotów','Źródło','Trivago');hotelTable(c.hotel);}
 
     // ===== STRONA 2: PLAN =====
     doc.addPage(); y = M;
@@ -229,10 +249,7 @@ window.PDFR = (() => {
     y += 2; color(LINE, 'setDrawColor'); doc.setLineWidth(0.4); need(14); doc.line(M, y, W - M, y); y += 1;
     para(`Uwagi: Raport wygenerowany ${L.dmy(new Date())} w aplikacji „Andrzej Sowa · Planer tanich wyjazdów”. Nic nie zostało zarezerwowane ani opłacone. Ceny lotów z wyszukiwania Ryanair (stan na ${FLs ? F.stamp(FLs.checkedAt) : '—'}); pozostałe ceny sprawdź w linkach. Pogoda = ${WX ? (WX.kind === 'forecast' ? 'prognoza Open-Meteo' : 'średnie z 5 lat (Open-Meteo), nie prognoza') : 'brak danych'}.`, M, CW, 6.6, 'normal', MUTED);
 
-    const n = doc.getNumberOfPages();
-    for (let i = 1; i <= n; i++) { doc.setPage(i); font('normal', 6.5, MUTED); text('© Wojciech Wieczorek · Andrzej Sowa · Planer tanich wyjazdów', M, 291); text(`str. ${i}/${n}`, W - M, 291, { align: 'right' }); }
-    doc.setProperties({ title: `${window.REPORT.fileName(c)}`, author: 'Wojciech Wieczorek', subject: 'Planer tanich wyjazdów – Andrzej Sowa', creator: 'Andrzej Sowa · Planer' });
-    return doc;
+    return finish();
   }
 
   async function download(c) {

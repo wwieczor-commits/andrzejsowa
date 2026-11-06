@@ -21,9 +21,11 @@ window.REPORT = (() => {
     food: '<path d="M7 2h2v8a3 3 0 0 1-2 2.8V22H5v-9.2A3 3 0 0 1 3 10V2h2v6h1V2h1v6h1zm9 0c2.2 0 4 2.7 4 6 0 2.4-1 4.4-2.5 5.4V22h-2.5V2z"/>'
   };
   const KIND_ICON = { arr: 'plane', dep: 'plane', beach: 'sun', scooter: 'scooter', sight: 'sight', food: 'food' };
-  const fileName = c => `Wyjazd_${(c.dest.city || c.dest.name).replace(/[^\p{L}\p{N}]+/gu, '_')}_Andrzej_Sowa_${L.iso(c.dt.start)}`;
+  const fileName = c => c.hotelOnly?`Hotele_${c.hotel.config.destination.replace(/[^\p{L}\p{N}]+/gu,'_')}_Andrzej_Sowa_${c.hotel.config.checkin}`:`Wyjazd_${(c.dest.city || c.dest.name).replace(/[^\p{L}\p{N}]+/gu, '_')}_Andrzej_Sowa_${L.iso(c.dt.start)}`;
 
+  function wrap(c,body){const base=location.href.replace(/[#?].*$/,'').replace(/[^/]*$/,'');return `<!DOCTYPE html><html lang="pl"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><base href="${esc(base)}" target="_blank"><title>${esc(fileName(c))}</title><link rel="stylesheet" href="${esc(base)}assets/fonts.css"><style>${CSS}${EXTRA}tr{break-inside:avoid} .hotel-report{margin-top:10px}</style></head><body><div class="screen-pad">${body}</div></body></html>`;}
   function html(c) {
+    if(c.hotelOnly)return wrap(c,`<div class="header"><div><h1>Hotele · ${esc(c.hotel.config.destination)}</h1><div class="subtitle">Dla Andrzeja Sowy · odczytane oferty, nie rezerwacja</div></div><div class="badge">${esc(APP_VERSION)}<span>Hotele</span></div></div>${HOTELS.reportHTML(c.hotel)}<div class="footer">Nic nie zarezerwowano ani nie opłacono. © Wojciech Wieczorek</div>`);
     const { f, dest, dt, groups, plan, wx } = c;
     const G = id => (groups.find(g => g.id === id) || { items: [] });
     const ad = +f.adults || 1, ch = +f.children || 0, persons = ad + ch;
@@ -121,7 +123,7 @@ window.REPORT = (() => {
    : `<div class="summary-card best"><div class="label">Loty</div><div class="total">Brak lotów</div><div class="breakdown">${esc(FLs && FLs.message || 'Wyszukiwanie nie zwróciło wyników.')}</div></div>`}
  ${+f.budget > 0 ? `<div class="summary-card"><div class="label">Twój budżet</div><div class="total">${fmt(+f.budget)}</div><div class="breakdown">${bestFl ? `Po opłaceniu lotu zostaje ${+f.budget - bestFl.total >= 0 ? esc(F.zl2(+f.budget - bestFl.total)) : 'brak (lot droższy niż budżet)'} na nocleg, jedzenie i transport.` : 'Brak lotów do porównania.'}</div></div>` : ''}
 </div>
-<p class="footnote">W raporcie są tylko prawdziwe bazowe ceny lotów z wyszukiwania i Twoje dane z formularza. Niemowlęta: ${+f.infants||0}; ich dopłaty nie są wliczone. Ceny noclegów i atrakcji sprawdź w linkach – aplikacja ich nie zgaduje.</p>
+<p class="footnote">W raporcie są tylko prawdziwe bazowe ceny lotów z wyszukiwania i Twoje dane z formularza. Niemowlęta: ${+f.infants||0}; ich dopłaty nie są wliczone. Ceny hoteli w sekcji Trivago pochodzą z odczytu serwisu; bez wyszukania hoteli dostępne są tylko linki. Ceny atrakcji sprawdź samodzielnie.</p>
 <div class="cols2" style="margin-top:6px;">
  <div><h2 style="margin-top:0;">Harmonogram</h2><div class="timeline">${tlHtml}</div>
   <div class="tl-note">Godziny lotów zależą od wybranej oferty – po rezerwacji wpisz je do planu. Na lotnisku bądź ok. 2 h przed wylotem.</div></div>
@@ -135,7 +137,8 @@ ${extHtml}
 <h3>Inne wyszukiwarki lotów</h3>
 <table><thead><tr><th>Trasa</th><th>Daty</th><th>Wyszukiwarka</th><th>Uwagi</th><th>Cena</th><th></th></tr></thead><tbody>${flRows}</tbody></table>
 <p class="footnote">${dt.sample ? 'Tryb „miesiąc”: Skyscanner i Ryanair pokazują cały miesiąc; linki Google Flights / Wizz Air / Booking używają dat z połowy miesiąca – zmień je na stronie.' : 'Linki otwierają wyszukiwarki z Twoimi datami.'}</p>
-<h2>Nocleg (${dt.nights} nocy, ${f.breakfast === 'tak' ? 'ze śniadaniem' : f.breakfast === 'nie' ? 'bez śniadania' : 'śniadanie obojętne'}, Booking.com)</h2>
+${c.hotel?HOTELS.reportHTML(c.hotel):''}
+<h2>Nocleg – dodatkowe linki z formularza lotów (${dt.nights} nocy, ${f.breakfast === 'tak' ? 'ze śniadaniem' : f.breakfast === 'nie' ? 'bez śniadania' : 'śniadanie obojętne'}, Booking.com)</h2>
 <p class="muted">${osob}, ${L.dmy(dt.start)}–${L.dmy(dt.end)}${dt.sample ? ' (daty przykładowe)' : ''} · typ: ${esc(ACC[f.accType] || 'dowolny')} · ${esc(DIST[f.distance])}</p>
 <table><thead><tr><th>Wyszukiwanie</th><th>Typ</th><th>Śniadanie</th><th>Odległość</th><th>Noce</th><th>Cena</th><th></th></tr></thead><tbody>${accRows}</tbody></table>
 <div class="footer keep-together" style="margin-top:6px;font-size:6.6pt;"><strong>Uwagi:</strong> Nic nie zostało zarezerwowane ani opłacone – raport zawiera tylko linki do wyszukiwarek. Ceny lotów i noclegów sprawdź w linkach – mogą się zmieniać z dnia na dzień. Opłata miejska / turystyczna może dojść na miejscu.</div>`;
@@ -172,8 +175,7 @@ ${rentals || '<p class="muted">Nie wybrano skutera ani roweru – zaznacz je w f
 ${allLinks.map(([l, u]) => `${esc(l)}: ${A(u, esc(u))}`).join('<br>\n')}</div>
 <div class="footer"><strong>Uwagi:</strong> Raport wygenerowany ${today} w aplikacji „Andrzej Sowa · Planer tanich wyjazdów”. Nic nie zostało zarezerwowane ani opłacone. Ceny lotów pochodzą z wyszukiwania Ryanair (stan na ${FLs ? esc(F.stamp(FLs.checkedAt)) : '—'}); pozostałe ceny sprawdź w linkach. Pogoda = ${W ? esc(W.kind === 'forecast' ? 'prognoza Open-Meteo' : 'średnie z 5 lat (Open-Meteo), nie prognoza') : 'brak danych'}. Propozycja dla Andrzeja Sowy · © Wojciech Wieczorek.</div>`;
 
-    const base = location.href.replace(/[#?].*$/, '').replace(/[^/]*$/, '');
-    return `<!DOCTYPE html><html lang="pl"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><base href="${esc(base)}" target="_blank"><title>${esc(fileName(c))}</title><link rel="stylesheet" href="${esc(base)}assets/fonts.css"><style>${CSS}${EXTRA}</style></head><body><div class="screen-pad">${p1}${p2}${p3}</div></body></html>`;
+    return wrap(c,p1+p2+p3);
   }
   return { html, fileName };
 })();
