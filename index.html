@@ -9,65 +9,71 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="assets/logo.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="assets/icons/icon-180.png">
-<link rel="stylesheet" href="assets/fonts.css?v=1.4">
-<link rel="stylesheet" href="style.css?v=1.4">
+<link rel="stylesheet" href="assets/fonts.css?v=1.5">
+<link rel="stylesheet" href="style.css?v=1.5">
 </head>
 <body>
 <header class="hero">
-  <div class="hero-inner">
-    <a class="brand" href="./" aria-label="Andrzej Sowa – strona główna">
-      <img src="assets/logo.svg" alt="" width="52" height="52">
-      <span><strong>Andrzej Sowa</strong><small>Planer tanich wyjazdów</small></span>
-    </a>
-    <p class="hero-lead">Wybierz skąd, dokąd i kiedy, a aplikacja wyszuka prawdziwe loty Ryanair z cenami. Potem dostaniesz linki do noclegów i transportu, plan dnia po dniu i raport PDF.</p>
-  </div>
-  <svg class="hero-plane" viewBox="0 0 600 120" aria-hidden="true"><path d="M0 100 C150 20 330 10 520 50" stroke="#e0452b" stroke-width="2" stroke-dasharray="6 8" fill="none"/><path transform="translate(520 40) rotate(15)" d="M0 0l22-8c3-1 5 1 4 4l-8 22-4-2 3-13-10 5 1 5-2 2-3-5-5-3 2-2 5 1 5-10-13 3z" fill="#e0452b"/></svg>
-  <svg class="hero-wave" viewBox="0 0 1440 80" preserveAspectRatio="none" aria-hidden="true"><path d="M0 40c120-20 240-20 360 0s240 20 360 0 240-20 360 0 240 20 360 0v40H0z" fill="#f4f6f9"/></svg>
+  <div class="hero-inner"><a class="brand" href="./" aria-label="Andrzej Sowa – strona główna"><img src="assets/logo.svg" alt="" width="40" height="40"><span><strong>Andrzej Sowa</strong><small>Twój kierunek: taniej</small></span></a>
+  <h1>Mały budżet.<br>Wielki świat<span>.</span></h1><p>Znajdź swój lot. Resztę zaplanujesz potem.</p></div>
 </header>
-
 <main class="wrap">
-  <form id="f" class="card form" autocomplete="off" novalidate>
-    <details class="fs" data-step="1" open>
-      <summary><h2><span class="num">1</span> Skąd i dokąd</h2><span class="sum" data-sum="1"></span></summary>
-      <div class="fs-body">
-      <div class="route-pickers">
-        <div class="route-picker"><h3>🛫 Skąd</h3><input type="hidden" name="origin" id="origin"><input type="hidden" name="originCountry" id="originCountry" value="pl"><div id="fromPicker"></div></div>
-        <div class="route-picker"><h3>🛬 Dokąd</h3><input type="hidden" name="dest" id="dest"><input type="hidden" name="destCountry" id="destCountry"><div id="toPicker"></div></div>
-      </div>
-      <p class="src">Szukaj też po mieście, nazwie lotniska, kodzie IATA lub kraju (np. „kat”, „Malaga”, „Italy”). Lista obejmuje sieć Ryanair i wszystkie polskie lotniska.</p>
-    <button type="button" class="btn ghost next" data-next="2">Dalej ↓</button></div>
-    </details>
+<form id="f" autocomplete="off" novalidate>
+  <section class="card search-panel" aria-label="Wyszukiwarka lotów">
+    <div class="seg trip-toggle" role="radiogroup" aria-label="Rodzaj podróży"><label><input type="radio" name="tripType" value="return" checked><span>W obie strony</span></label><label><input type="radio" name="tripType" value="oneway"><span>W jedną stronę</span></label></div>
+    <input type="hidden" name="origin" id="origin"><input type="hidden" name="originCountry" id="originCountry" value="pl"><input type="hidden" name="dest" id="dest"><input type="hidden" name="destCountry" id="destCountry">
+    <div class="compact-route">
+      <button type="button" class="search-field" id="fromOpen"><small>Skąd</small><b id="fromValue">Wybierz miasto lub lotnisko</b><span class="field-icon">↗</span></button>
+      <button type="button" id="swap" aria-label="Zamień Skąd i Dokąd">⇄</button>
+      <button type="button" class="search-field" id="toOpen"><small>Dokąd</small><b id="toValue">Miasto, kraj lub dowolne miejsce</b><span class="field-icon">🌍</span></button>
+    </div>
+    <div class="compact-dates">
+      <button type="button" class="search-field" id="departOpen"><small>Wylot</small><b id="departValue">Wybierz datę</b><span class="field-icon">▦</span></button>
+      <button type="button" class="search-field" id="returnOpen"><small>Powrót</small><b id="returnValue">Wybierz datę</b><span class="field-icon">▦</span></button>
+    </div>
+    <button type="button" class="search-field" id="paxOpen"><small>Pasażerowie i klasa</small><b id="paxValue">1 dorosły · Ekonomiczna</b><span class="field-icon">♙</span></button>
+    <label class="direct-check"><input type="checkbox" name="directOnly" value="yes" checked><span>Tylko loty bezpośrednie</span></label>
+    <p class="search-disclaimer">Szukamy prawdziwych cen Ryanair, bez przesiadek. Inne linie porównasz linkami. Odznaczenie opcji nie dodaje przesiadek do wyników Ryanair.</p>
+    <button type="submit" class="btn primary" id="go">🔎 Szukaj</button><p class="err" id="err" role="alert" hidden></p>
+    <button type="button" class="clear-search" id="reset">Wyczyść wyszukiwanie</button>
+  </section>
 
-    <details class="fs" data-step="2">
-      <summary><h2><span class="num">2</span> Kiedy</h2><span class="sum" data-sum="2"></span></summary>
-      <div class="fs-body">
-      <div class="seg" role="radiogroup" aria-label="Tryb dat">
-        <label><input type="radio" name="dateMode" value="exact" checked><span>Dokładne daty</span></label>
-        <label><input type="radio" name="dateMode" value="month"><span>Miesiąc + długość</span></label>
-      </div>
-      <div class="grid2 mode-exact">
-        <label>Wylot<input type="date" name="depart" id="depart"></label>
-        <label>Powrót<input type="date" name="ret" id="ret"></label>
-      </div>
-      <div class="grid2 mode-month" hidden>
-        <label>Miesiąc<input type="month" name="month" id="month"></label>
-        <label>Długość pobytu (noce)<input type="number" name="nights" min="1" max="30" value="7"></label>
-      </div>
-    <button type="button" class="btn ghost next" data-next="3">Dalej ↓</button></div>
-    </details>
+  <dialog class="sheet" id="routeSheet" aria-labelledby="routeTitle"><div class="sheet-top"><h2 id="routeTitle">Skąd chcesz lecieć?</h2><button type="button" class="sheet-close" data-close aria-label="Zamknij wybór lotniska">✕</button></div>
+    <div class="sheet-body"><button type="button" class="anywhere-btn" id="anywhere">🌍 <span><b>Dowolne miejsce</b><small>Pokaż mi najtańsze kierunki Ryanair</small></span></button>
+    <div class="route-picker" id="fromRoute"><div id="fromPicker"></div></div><div class="route-picker" id="toRoute"><div id="toPicker"></div></div><p class="src">Kraj → lotnisko lub wszystkie lotniska w kraju. Szukaj też po mieście, IATA lub kraju, np. „kat”, „Malaga”, „Italy”.</p></div>
+  </dialog>
 
-    <details class="fs" data-step="3">
-      <summary><h2><span class="num">3</span> Kto i za ile</h2><span class="sum" data-sum="3"></span></summary>
-      <div class="fs-body">
-      <div class="grid3">
-        <label>Dorośli<input type="number" name="adults" min="1" max="9" value="1"></label>
-        <label>Dzieci<input type="number" name="children" min="0" max="6" value="0"></label>
-        <label>Budżet łącznie (zł)<input type="number" name="budget" min="0" step="100" placeholder="np. 3000"></label>
-      </div>
-      <label class="ages" hidden>Wiek dzieci (po przecinku)<input name="childAges" placeholder="np. 7, 10"></label>
-    <button type="button" class="btn ghost next" data-next="4">Dalej ↓</button></div>
-    </details>
+  <dialog class="sheet" id="calendarSheet" aria-labelledby="calendarTitle"><div class="sheet-top"><h2 id="calendarTitle">Kiedy lecimy?</h2><button type="button" class="sheet-close" data-close aria-label="Zamknij kalendarz">✕</button></div>
+    <div class="sheet-body">
+      <div class="calendar-tabs" role="tablist" aria-label="Elastyczne daty"><button type="button" role="tab" data-cal="exact" aria-selected="true">Daty</button><button type="button" role="tab" data-cal="month" aria-selected="false">Cały miesiąc</button><button type="button" role="tab" data-cal="cheapest" aria-selected="false">Najtańszy miesiąc</button></div>
+      <div class="cal-month-nav"><button type="button" id="calPrev" aria-label="Poprzedni miesiąc">‹</button><strong id="calMonthTitle"></strong><button type="button" id="calNext" aria-label="Następny miesiąc">›</button></div>
+      <p class="cal-status" id="calStatus" role="status" aria-live="polite"></p>
+      <div id="calendarGrid" class="calendar-grid" aria-label="Kalendarz wylotu"></div>
+      <div id="monthGrid" class="month-grid" hidden></div>
+      <div class="calendar-legend"><span class="low-dot"></span> Najniższe odczytane ceny · za 1 os., jeden lot · PLN<br>— = brak ceny w API (nie oznacza braku lotu). Ceny mogą się zmienić.</div>
+      <div class="date-mode-storage" hidden><input type="radio" name="dateMode" value="exact" checked><input type="radio" name="dateMode" value="month"></div>
+      <div class="mode-exact manual-dates"><label>Wylot<input type="date" name="depart" id="depart"></label><label id="retLabel">Powrót<input type="date" name="ret" id="ret"></label></div>
+      <div class="mode-month" hidden><label>Wybrany miesiąc<input type="month" name="month" id="month"></label></div>
+      <label id="nightsLabel">Długość pobytu (noce)<input type="number" name="nights" min="1" max="30" value="7"></label>
+      <button type="button" class="btn primary sheet-done" id="calendarDone">Gotowe</button>
+    </div>
+  </dialog>
 
+  <dialog class="sheet" id="paxSheet" aria-labelledby="paxTitle"><div class="sheet-top"><h2 id="paxTitle">Pasażerowie i klasa</h2><button type="button" class="sheet-close" data-close aria-label="Zamknij pasażerów">✕</button></div>
+    <div class="sheet-body"><div class="pax-row"><span><b>Dorośli</b><small>16 lat i więcej</small></span><div class="counter"><button type="button" data-count="adults" data-delta="-1" aria-label="Mniej dorosłych">−</button><input type="number" name="adults" min="1" max="9" value="1" aria-label="Dorośli"><button type="button" data-count="adults" data-delta="1" aria-label="Więcej dorosłych">+</button></div></div>
+    <div class="pax-row"><span><b>Dzieci</b><small>2–15 lat</small></span><div class="counter"><button type="button" data-count="children" data-delta="-1" aria-label="Mniej dzieci">−</button><input type="number" name="children" min="0" max="6" value="0" aria-label="Dzieci"><button type="button" data-count="children" data-delta="1" aria-label="Więcej dzieci">+</button></div></div>
+    <div class="ages" hidden><label>Wiek dzieci w dniu wylotu (po przecinku)<input name="childAges" placeholder="np. 7, 10"></label></div>
+    <div class="pax-row"><span><b>Niemowlęta</b><small>Poniżej 2 lat · na kolanach</small></span><div class="counter"><button type="button" data-count="infants" data-delta="-1" aria-label="Mniej niemowląt">−</button><input type="number" name="infants" min="0" max="9" value="0" aria-label="Niemowlęta"><button type="button" data-count="infants" data-delta="1" aria-label="Więcej niemowląt">+</button></div></div>
+    <p class="src">Maksymalnie 1 niemowlę na dorosłego. API podaje bazową taryfę dorosłego/dziecka, bez dopłaty za niemowlę. Dopłatę i cenę grupową potwierdzisz w Ryanair.</p>
+    <label>Klasa<select name="cabin"><option value="economy">Ekonomiczna</option></select></label><p class="src">Ryanair oferuje jedną klasę. Bagaż i miejsca wybierzesz u przewoźnika.</p><button type="button" class="btn primary sheet-done" id="paxDone">Gotowe</button></div>
+  </dialog>
+
+  <section id="out" hidden>
+    <div class="card summary" id="summary"></div><div id="flightsCard" hidden></div>
+    <div class="note-safe">🔒 <strong>Nic nie rezerwujemy i nic nie płacimy.</strong> Wybierasz i rezerwujesz sam na stronie przewoźnika. To nie jest pełna wyszukiwarka wszystkich linii.</div>
+    <details class="card rest-options" id="restOptions"><summary><span>🧳 Zaplanuj resztę wyjazdu<small>Nocleg, atrakcje, transport i budżet</small></span><span>＋</span></summary><div class="rest-body">
+    <p id="planTargetNote" class="src"></p>
+    <label>Budżet całego wyjazdu (zł)<input type="number" name="budget" min="0" step="100" placeholder="np. 3000"></label>
     <details class="fs" data-step="4">
       <summary><h2><span class="num">4</span> Nocleg</h2><span class="sum" data-sum="4"></span></summary>
       <div class="fs-body">
@@ -76,7 +82,7 @@
         <label>Śniadanie<select name="breakfast"><option value="obojętne">Obojętne</option><option value="tak">Tak, ze śniadaniem</option><option value="nie">Bez śniadania</option></select></label>
         <label>Odległość<select name="distance"><option value="any">Bez znaczenia</option><option value="c1">Do 1 km od centrum</option><option value="c3">Do 3 km od centrum</option><option value="c5">Do 5 km od centrum</option><option value="airport">Blisko lotniska</option></select></label>
       </div>
-    <button type="button" class="btn ghost next" data-next="5">Dalej ↓</button></div>
+    </div>
     </details>
 
     <details class="fs" data-step="5">
@@ -101,22 +107,11 @@
     </div>
     </details>
 
-    <div class="actions">
-      <button type="submit" class="btn primary" id="go">🔎 Szukaj lotów</button>
-      <button type="button" class="btn ghost" id="reset">Wyczyść</button>
-    </div>
-    <p class="err" id="err" role="alert" hidden></p>
-  </form>
 
-  <section id="out" hidden>
-    <div class="card summary" id="summary"></div>
-    <div class="card" id="flightsCard" hidden></div>
-    <div class="note-safe">🔒 <strong>Nic nie rezerwujemy i nic nie płacimy.</strong> Aplikacja tylko przygotowuje linki do wyszukiwarek – ceny i dostępność sprawdzasz i rezerwujesz sam na stronach przewoźników i serwisów.</div>
-    <div id="groups"></div>
-    <div class="card" id="budgetCard"></div>
-    <div class="card" id="weatherCard"></div>
-    <div class="card" id="planCard"></div>
+    <div id="groups"></div><div class="card" id="budgetCard"></div><div class="card" id="weatherCard"></div><div class="card" id="planCard"></div>
+    </div></details>
   </section>
+</form>
 </main>
 
 <div class="overlay" id="reportView" hidden>
@@ -134,7 +129,7 @@
 
 <div class="upd" id="updBar" hidden>Nowa wersja aplikacji jest gotowa. <button type="button" class="btn small primary" id="updBtn">Odśwież</button></div>
 <nav class="bar" aria-label="Akcje">
-  <button type="button" class="btn primary" id="barLinks">🔎 Szukaj lotów</button>
+  <button type="button" class="btn primary" id="barLinks">🔎 Szukaj</button>
   <button type="button" class="btn dark" id="genReport" disabled>📄 Raport</button>
   <button type="button" class="btn dark" id="pdf" disabled>⬇️ PDF</button>
   <div class="bar-hint" id="barHint"></div>
@@ -145,15 +140,16 @@
   <div class="ver" id="ver"></div>
 </footer>
 
-<script src="js/version.js?v=1.4"></script>
-<script src="js/data.js?v=1.4"></script>
-<script src="assets/data/airports-fallback.js?v=1.4"></script>
-<script src="js/airports.js?v=1.4"></script>
-<script src="js/logic.js?v=1.4"></script>
-<script src="js/flights.js?v=1.4"></script>
-<script src="js/other-flights.js?v=1.4"></script>
-<script src="js/report.js?v=1.4"></script>
-<script src="js/pdf.js?v=1.4"></script>
-<script src="js/app.js?v=1.4"></script>
+<script src="js/version.js?v=1.5"></script>
+<script src="js/data.js?v=1.5"></script>
+<script src="assets/data/airports-fallback.js?v=1.5"></script>
+<script src="js/airports.js?v=1.5"></script>
+<script src="js/logic.js?v=1.5"></script>
+<script src="js/flights.js?v=1.5"></script>
+<script src="js/other-flights.js?v=1.5"></script>
+<script src="js/report.js?v=1.5"></script>
+<script src="js/pdf.js?v=1.5"></script>
+<script src="js/search-ui.js?v=1.5"></script>
+<script src="js/app.js?v=1.5"></script>
 </body>
 </html>

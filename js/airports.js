@@ -17,7 +17,7 @@ window.AP = (() => {
   const isAll = value => value==='ALL'||String(value).startsWith('ALL:');
   const countryOf = (value,def='pl') => isAll(value) ? (value.split(':')[1]||def) : byCode(value)?.country || def;
   const members = value => isAll(value) ? airports.filter(a=>a.country===countryOf(value)) : [byCode(value)].filter(Boolean);
-  const label = value => isAll(value) ? `${country(countryOf(value))?.name || countryOf(value)} · wszystkie lotniska` : byCode(value) ? `${byCode(value).city} (${value})` : (value||'wybierz lotnisko');
+  const label = value => value==='ANY' ? 'Dowolne miejsce' : isAll(value) ? `${country(countryOf(value))?.name || countryOf(value)} · wszystkie lotniska` : byCode(value) ? `${byCode(value).city} (${value})` : (value||'wybierz lotnisko');
   const title = a => `${a.city} · ${a.airportName} (${a.code})`;
   function find(text) {
     const code=(String(text).match(/\b([A-Z]{3})\b/)||[])[1]||String(text).toUpperCase();
@@ -41,6 +41,7 @@ window.AP = (() => {
     function changed(){hidden.dispatchEvent(new Event('input',{bubbles:true}));hidden.dispatchEvent(new Event('change',{bubbles:true}));if(onChange)onChange();}
     function chooseCountry(code,notify=true){cc=code;ccHidden.value=cc;ci.value=country(cc)?`${flag(cc)} ${country(cc).name}`:'';selected='';hidden.value='';ai.value='';picked.textContent='';close(cm,ci);showAirports();if(notify)changed();}
     function choose(value,notify=true){
+      if(side==='to'&&value==='ANY'){selected=value;hidden.value=value;cc='';ccHidden.value='';ci.value='';ai.value='Dowolne miejsce';picked.textContent='🌍 Dowolne miejsce';close(cm,ci);close(am,ai);if(notify)changed();return;}
       if(value==='ALL')value='ALL:pl';
       if(!isAll(value)&&!byCode(value)) {const a=find(value);value=a?.code||'';}
       selected=value;hidden.value=value;cc=countryOf(value,cc||'pl');ccHidden.value=cc;

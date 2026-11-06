@@ -32,7 +32,8 @@ window.REPORT = (() => {
     const origCode = AP.isAll(f.origin) ? AP.country(AP.countryOf(f.origin))?.name : f.origin;
     const destCode = dest.iata || '';
     const range = `${L.dm(dt.start)}–${L.dmy(dt.end)}`;
-    const when = dt.mode === 'month' ? `${L.MONTHS[dt.m - 1]} ${dt.y} · ${dt.nights} nocy` : `${L.dmy(dt.start)} – ${L.dmy(dt.end)}`;
+    const one=f.tripType==='oneway';
+    const when = dt.mode === 'month' ? `${L.MONTHS[dt.m - 1]} ${dt.y} · ${dt.nights} nocy` : one?`${L.dmy(dt.start)} · w jedną stronę · plan pobytu ${dt.nights} nocy`:`${L.dmy(dt.start)} – ${L.dmy(dt.end)}`;
     const today = L.dmy(new Date());
     const allLinks = [];
     const reg = (label, url) => { allLinks.push([label, url]); return url; };
@@ -67,10 +68,10 @@ window.REPORT = (() => {
     else {
       const rows = FLs.results.slice(0, 6);
       const alt = (!FLs.exactFound ? [...FLs.alternatives.otherAirports.slice(0, 3), ...FLs.alternatives.nearbyDest.slice(0, 3)] : []);
-      const row = (r, n, tag = '') => `<tr${r.exact ? ' class="highlight"' : ''}><td>${A(reg(`Ryanair ${r.from}→${r.to} ${r.out}/${r.back}`, r.url), `${r.from} ⇄ ${r.to}`)}${tag}</td><td>${esc(F.fmtDate(r.out))}<br>${esc(F.fmtDate(r.back))}</td><td>${esc(F.hm(r.outDep))}–${esc(F.hm(r.outArr))}<br>${esc(F.hm(r.inDep))}–${esc(F.hm(r.inArr))}</td><td>Ryanair</td><td>bez przesiadek</td><td class="price">${esc(F.zl2(r.total))}${persons > 1 ? `<br><span class="muted">${esc(F.zl2(r.perPerson))}/os.</span>` : ''}</td><td>${A(r.url, 'Rezerwuj →', 'book-link')}</td></tr>`;
+      const row = (r, n, tag = '') => `<tr${r.exact ? ' class="highlight"' : ''}><td>${A(reg(`Ryanair ${r.from}→${r.to} ${r.out}/${r.back}`, r.url), `${r.from} ${one?'→':'⇄'} ${r.to}`)}${tag}</td><td>${esc(F.fmtDate(r.out))}${r.back?'<br>'+esc(F.fmtDate(r.back)):''}</td><td>${esc(F.hm(r.outDep))}–${esc(F.hm(r.outArr))}${r.back?'<br>'+esc(F.hm(r.inDep))+'–'+esc(F.hm(r.inArr)):''}</td><td>Ryanair</td><td>bez przesiadek</td><td class="price">${esc(F.zl2(r.total))}${persons > 1 ? `<br><span class="muted">${esc(F.zl2(r.perPerson))}/os.</span>` : ''}</td><td>${A(r.url, 'Rezerwuj →', 'book-link')}</td></tr>`;
       realFl = (FLs.message ? `<div class="tl-note" style="margin-bottom:4px">${esc(FLs.message)}</div>` : '')
         + (rows.length || alt.length ? `<table><thead><tr><th>Kierunek</th><th>Data</th><th>Godziny</th><th>Przewoźnik</th><th>Przesiadki</th><th>Cena${persons > 1 ? ` (${persons} os.)` : ''}</th><th></th></tr></thead><tbody>${rows.map((r, n) => row(r, n)).join('')}${alt.map(r => row(r, 0, `<br><span class="muted">alternatywa${r.km ? ` · ${esc(r.toName)} ${r.km} km od celu` : ' · inne lotnisko'}</span>`)).join('')}</tbody></table>` : '')
-        + `<p class="footnote">Prawdziwe ceny z publicznego API Ryanair (najtańszy lot danego dnia, tam i z powrotem), pobrane ${esc(F.stamp(FLs.checkedAt))}. Cena łączna = taryfa za osobę × ${persons}; zwykle bez bagażu rejestrowanego. Ceny zmieniają się – sprawdź przed rezerwacją. Wizz Air i inne linie: linki poniżej.</p>`;
+        + `<p class="footnote">Prawdziwe ceny z publicznego API Ryanair (najtańszy lot danego dnia, ${one?'w jedną stronę':'tam i z powrotem'}), pobrane ${esc(F.stamp(FLs.checkedAt))}. Cena łączna = taryfa bazowa × ${persons} dorosłych/dzieci; niemowlęta: ${+f.infants||0} (ich dopłaty nie są uwzględnione). Cenę grupową potwierdza Ryanair; zwykle bez bagażu rejestrowanego. Ceny zmieniają się – sprawdź przed rezerwacją. Wizz Air i inne linie: linki poniżej.</p>`;
     }
     const bestFl = FLs && FLs.results.length ? (FLs.results.find(r => r.exact) || FLs.results[0]) : null;
     const ext=OTHERFLIGHTS.forContext(c);
@@ -78,10 +79,12 @@ window.REPORT = (() => {
 
     if (bestFl) {
       tl[1] = ['', `${F.fmtDate(bestFl.out)}, ${F.hm(bestFl.outDep)}`, `Wylot ${bestFl.from} → ${bestFl.to}, Ryanair, przylot ${F.hm(bestFl.outArr)} (najtańsza znaleziona opcja)`];
-      tl[3] = ['stay', `${L.dm(new Date(bestFl.out + 'T00:00:00'))}–${L.dmy(new Date(bestFl.back + 'T00:00:00'))}`, tl[3][2]];
-      tl[5] = ['', `${F.fmtDate(bestFl.back)}, ${F.hm(bestFl.inDep)}`, `Wylot ${bestFl.to} → ${bestFl.from}, Ryanair, przylot ${F.hm(bestFl.inArr)}`];
+      tl[3] = ['stay', `${L.dm(new Date(bestFl.out + 'T00:00:00'))}–${L.dmy(bestFl.back?new Date(bestFl.back + 'T00:00:00'):dt.end)}`, tl[3][2]];
+      if(bestFl.back)tl[5] = ['', `${F.fmtDate(bestFl.back)}, ${F.hm(bestFl.inDep)}`, `Wylot ${bestFl.to} → ${bestFl.from}, Ryanair, przylot ${F.hm(bestFl.inArr)}`];
       tlHtml = tl.map(([k, w, t]) => `<div class="tl-item ${k}"><div class="when">${esc(w)}</div><div class="what">${esc(t)}</div></div>`).join('');
     }
+
+    if(one){tl.splice(4);tlHtml=tl.map(([k,w,t])=>`<div class="tl-item ${k}"><div class="when">${esc(w)}</div><div class="what">${esc(t)}</div></div>`).join('');}
 
     // --- Nocleg ---
     const accRows = G('nocleg').items.map((i, n) => `<tr${n === 0 ? ' class="highlight"' : ''}><td>${n === 0 ? '<span class="tag">1</span>' : ''}${A(reg(i.label, i.url), esc(i.label))}</td><td>${esc(ACC[f.accType] || 'dowolny')}</td><td>${f.breakfast === 'tak' || i.kind === 'bf' ? 'tak' : f.breakfast === 'nie' ? 'nie' : 'obojętne'}</td><td>${esc(DIST[f.distance])}</td><td>${dt.nights}</td><td class="chk">sprawdź</td><td>${A(i.url, 'Szukaj →', 'book-link')}</td></tr>`).join('');
@@ -114,11 +117,11 @@ window.REPORT = (() => {
 <div class="badge">${bestFl ? `Najtańszy lot${persons > 1 ? ` (${persons} os.)` : ''}<span>${esc(F.zl2(bestFl.total))}</span>` : FLs ? 'Loty Ryanair<span>brak</span>' : 'Loty<span>—</span>'}</div></div>
 <h2>Podsumowanie</h2>
 <div class="summary">
- ${bestFl ? `<div class="summary-card best"><div class="label">Najtańszy znaleziony lot (prawdziwa cena)</div><div class="total">${esc(F.zl2(bestFl.total))}</div><div class="breakdown">Ryanair ${bestFl.from} ⇄ ${bestFl.to} · ${esc(F.fmtDate(bestFl.out))} ${esc(F.hm(bestFl.outDep))} – ${esc(F.fmtDate(bestFl.back))} ${esc(F.hm(bestFl.inDep))}<br>${persons > 1 ? `${esc(F.zl2(bestFl.perPerson))}/os. × ${persons} · ` : ''}ceny z dnia ${esc(F.stamp(FLs.checkedAt))}</div></div>`
+ ${bestFl ? `<div class="summary-card best"><div class="label">Najtańszy znaleziony lot (prawdziwa cena)</div><div class="total">${esc(F.zl2(bestFl.total))}</div><div class="breakdown">Ryanair ${bestFl.from} ${one?'→':'⇄'} ${bestFl.to} · ${esc(F.fmtDate(bestFl.out))} ${esc(F.hm(bestFl.outDep))}${bestFl.back?' – '+esc(F.fmtDate(bestFl.back))+' '+esc(F.hm(bestFl.inDep)): ' · lot w jedną stronę'}<br>${persons > 1 ? `${esc(F.zl2(bestFl.perPerson))}/os. × ${persons} · ` : ''}ceny z dnia ${esc(F.stamp(FLs.checkedAt))}</div></div>`
    : `<div class="summary-card best"><div class="label">Loty</div><div class="total">Brak lotów</div><div class="breakdown">${esc(FLs && FLs.message || 'Wyszukiwanie nie zwróciło wyników.')}</div></div>`}
  ${+f.budget > 0 ? `<div class="summary-card"><div class="label">Twój budżet</div><div class="total">${fmt(+f.budget)}</div><div class="breakdown">${bestFl ? `Po opłaceniu lotu zostaje ${+f.budget - bestFl.total >= 0 ? esc(F.zl2(+f.budget - bestFl.total)) : 'brak (lot droższy niż budżet)'} na nocleg, jedzenie i transport.` : 'Brak lotów do porównania.'}</div></div>` : ''}
 </div>
-<p class="footnote">W raporcie są tylko prawdziwe ceny lotów z wyszukiwania i Twoje dane z formularza. Ceny noclegów i atrakcji sprawdź w linkach – aplikacja ich nie zgaduje.</p>
+<p class="footnote">W raporcie są tylko prawdziwe bazowe ceny lotów z wyszukiwania i Twoje dane z formularza. Niemowlęta: ${+f.infants||0}; ich dopłaty nie są wliczone. Ceny noclegów i atrakcji sprawdź w linkach – aplikacja ich nie zgaduje.</p>
 <div class="cols2" style="margin-top:6px;">
  <div><h2 style="margin-top:0;">Harmonogram</h2><div class="timeline">${tlHtml}</div>
   <div class="tl-note">Godziny lotów zależą od wybranej oferty – po rezerwacji wpisz je do planu. Na lotnisku bądź ok. 2 h przed wylotem.</div></div>

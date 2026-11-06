@@ -18,6 +18,7 @@ window.PL = (() => {
 
   function resolveDest(text) {
     const A = window.AP;
+    if(text==='ANY')return {anywhere:true,all:true,name:'Dowolne miejsce',city:'wybrany kierunek',q:'',airports:[]};
     if (A && A.isAll(text)) {const cc=A.countryOf(text);const c=A.country(cc);return {name:`${c?.name || cc} · wszystkie lotniska`,city:c?.name||cc,q:c?.en||cc,country:c?.name,countryCode:cc,all:true,airports:A.members(text).map(a=>a.code)};}
     const a = A && A.find(text);
     const d = a ? window.PD.DEST.find(d=>d.iata===a.code) : find(text);
@@ -32,15 +33,16 @@ window.PL = (() => {
   // Daty: tryb dokładny albo miesiąc + długość (wtedy przykładowe daty ok. połowy miesiąca)
   function computeDates(f) {
     const today = new Date(); today.setHours(0, 0, 0, 0);
-    if (f.dateMode === 'exact' && f.depart && f.ret) {
-      const a = parse(f.depart), b = parse(f.ret);
+    if (f.dateMode === 'exact' && f.depart && (f.ret||f.tripType==='oneway')) {
+      const a = parse(f.depart), b = f.tripType==='oneway'?addDays(a,+f.nights||7):parse(f.ret);
       const nights = Math.max(1, Math.round((b - a) / 864e5));
       return { mode: 'exact', start: a, end: b, nights, sample: false };
     }
     const [y, m] = (f.month || iso(addDays(today, 30)).slice(0, 7)).split('-').map(Number);
     const nights = Math.max(1, Math.min(30, +f.nights || 7));
     let start = new Date(y, m - 1, 15);
-    if (start < addDays(today, 3)) start = addDays(today, 7);
+    if (start < today) start = new Date(today);
+    if(start.getMonth()!==m-1)start=new Date(y,m-1,1);
     return { mode: 'month', start, end: addDays(start, nights), nights, sample: true, y, m, monthStart: new Date(y, m - 1, 1), monthEnd: new Date(y, m, 0) };
   }
 
@@ -48,36 +50,36 @@ window.PL = (() => {
 
   function buildLinks(f, dest, dt) {
     const ad = Math.max(1, +f.adults || 1), ch = Math.max(0, +f.children || 0);
-    const ages = childAges(f);
+    const ages = childAges(f),teens=ages.filter(a=>a>=12).length,young=ages.filter(a=>a<12).length;
     const out = iso(dt.start), back = iso(dt.end);
     const groups = [];
     const gTo = dest.iata || dest.q;
     const pax = ad + ch;
-    const paxTxt = `${ad} adult${ad > 1 ? 's' : ''}${ch ? ` ${ch} child${ch > 1 ? 'ren' : ''}` : ''}`;
+    const paxTxt = `${ad} adult${ad > 1 ? 's' : ''}${ch ? ` ${ch} child${ch > 1 ? 'ren' : ''}` : ''}${+f.infants?' '+f.infants+' infants':''}`;
 
     // --- LOTY ---
     const fl = [];
     // Google Flights rozumie tylko jedno lotnisko w q= (sprawdzone) – w trybie „miesiąc” daty przykładowe + kalendarz cen na stronie
-    const gfUrl = (from) => `https://www.google.com/travel/flights?q=${E(`Flights to ${gTo} from ${from} on ${out} through ${back} ${paxTxt}`)}&curr=PLN&hl=pl&gl=PL`;
+    const gfUrl = (from) => `https://www.google.com/travel/flights?q=${E(`Flights to ${gTo} from ${from} on ${out}${f.tripType==='oneway'?' one way':` through ${back}`} ${paxTxt}`)}&curr=PLN&hl=pl&gl=PL`;
     const orig = origins(f);
     orig.forEach(a => fl.push({ label: `Google Flights – z ${a.name} (${a.code})`, url: gfUrl(a.code), note: dt.sample ? 'ceny w PLN · przykładowe daty – otwórz kalendarz cen' : 'ceny w PLN', perAirport: window.AP ? AP.isAll(f.origin) : f.origin === 'ALL' }));
 
     const sky = (from) => {
       const base = `https://www.skyscanner.pl/transport/loty/${from.toLowerCase()}/${(dest.iata || '').toLowerCase()}/`;
-      const p = `adultsv2=${ad}${ch ? `&childrenv2=${ages.join('%7C')}` : ''}&cabinclass=economy&currency=PLN&market=PL&locale=pl-PL&rtn=1`;
+      const p = `adultsv2=${ad}${ch||+f.infants ? `&childrenv2=${[...ages,...Array(+f.infants||0).fill(0)].join('%7C')}` : ''}&cabinclass=economy&currency=PLN&market=PL&locale=pl-PL&rtn=${f.tripType==='oneway'?0:1}`;
       if (dt.mode === 'month') { const ym = `${String(dt.y).slice(2)}${pad(dt.m)}`; return `${base}?${p}&oym=${ym}&iym=${ym}`; }
       const s = d => `${String(d.getFullYear()).slice(2)}${pad(d.getMonth() + 1)}${pad(d.getDate())}`;
-      return `${base}${s(dt.start)}/${s(dt.end)}/?${p}`;
+      return `${base}${s(dt.start)}/${f.tripType==='oneway'?'':s(dt.end)+'/'}?${p}`;
     };
     if (dest.iata) {
-      fl.push({ label: AP.isAll(f.origin) ? `Skyscanner – ${AP.label(f.origin)}` : `Skyscanner – z ${orig[0].code}`, url: sky(AP.isAll(f.origin) ? AP.countryOf(f.origin) : orig[0].code), note: dt.mode === 'month' ? 'widok całego miesiąca (PLN)' : 'PLN' });
+      fl.push({ label: AP.isAll(f.origin) ? `Skyscanner – z ${orig[0].code} (jedno lotnisko)` : `Skyscanner – z ${orig[0].code}`, url: sky(orig[0].code), note: dt.mode === 'month' ? 'widok całego miesiąca (PLN)' : 'PLN' });
       const destCodes = [dest.iata, ...(dest.alt || [])];
       orig.forEach(a => destCodes.forEach(dc => {
-        const ry = dt.mode === 'month'
-          ? `https://www.ryanair.com/pl/pl/fare-finder?originIata=${a.code}&destinationIata=${dc}&isReturn=true&adults=${ad}&teens=0&children=${ch}&infants=0&dateOut=${iso(dt.monthStart)}&dateIn=${iso(addDays(dt.monthEnd, dt.nights))}&daysTrip=${dt.nights}&isExactDate=false&currency=PLN`
-          : `https://www.ryanair.com/pl/pl/trip/flights/select?adults=${ad}&teens=0&children=${ch}&infants=0&dateOut=${out}&dateIn=${back}&isConnectedFlight=false&isReturn=true&discount=0&promoCode=&originIata=${a.code}&destinationIata=${dc}`;
+        const ry = f.tripType==='oneway' ? FL.bookUrl(f,a.code,dc,out,null) : dt.mode === 'month'
+          ? `https://www.ryanair.com/pl/pl/fare-finder?originIata=${a.code}&destinationIata=${dc}&isReturn=true&adults=${ad}&teens=${teens}&children=${young}&infants=${+f.infants||0}&dateOut=${iso(dt.monthStart)}&dateIn=${iso(addDays(dt.monthEnd, dt.nights))}&daysTrip=${dt.nights}&isExactDate=false&currency=PLN`
+          : FL.bookUrl(f,a.code,dc,out,back);
         fl.push({ label: `Ryanair – ${a.code} → ${dc}`, url: ry, note: dt.mode === 'month' ? 'wyszukiwarka najtańszych dni w miesiącu' : 'wybrane daty', perAirport: window.AP ? AP.isAll(f.origin) : f.origin === 'ALL', airline: 'ryanair' });
-        fl.push({ label: `Wizz Air – ${a.code} → ${dc}`, url: `https://wizzair.com/pl-pl/booking/select-flight/${a.code}/${dc}/${out}/${back}/${ad}/${ch}/0/null`, note: dt.sample ? 'przykładowe daty – zmień w kalendarzu Wizz' : 'wybrane daty', perAirport: window.AP ? AP.isAll(f.origin) : f.origin === 'ALL', airline: 'wizz' });
+        fl.push({ label: `Wizz Air – ${a.code} → ${dc}`, url: `https://wizzair.com/pl-pl/booking/select-flight/${a.code}/${dc}/${out}/${f.tripType==='oneway'?'null':back}/${ad}/${ch}/${+f.infants||0}/null`, note: dt.sample ? 'przykładowe daty – zmień w kalendarzu Wizz' : 'wybrane daty', perAirport: window.AP ? AP.isAll(f.origin) : f.origin === 'ALL', airline: 'wizz' });
       }));
     } else {
       fl.push({label:'Ryanair – wyszukiwarka',url:'https://www.ryanair.com/pl/pl',note:'Kraj jako cel – gotowe linki do rezerwacji są przy znalezionych lotach.'});
@@ -93,7 +95,7 @@ window.PL = (() => {
     const dmap = { c1: 1000, c3: 3000, c5: 5000 };
     if (dmap[f.distance]) nflt.push(`distance=${dmap[f.distance]}`);
     const ss = f.distance === 'airport' ? `${dest.airportName || dest.q + ' airport'}` : dest.q;
-    const bk = (extra = [], order = '') => `https://www.booking.com/searchresults.pl.html?ss=${E(ss)}&checkin=${out}&checkout=${back}&group_adults=${ad}&group_children=${ch}${ages.map(a => `&age=${a}`).join('')}&no_rooms=1&selected_currency=PLN&lang=pl${[...nflt, ...extra].length ? `&nflt=${E([...nflt, ...extra].join(';'))}` : ''}${order ? `&order=${order}` : ''}`;
+    const bk = (extra = [], order = '') => `https://www.booking.com/searchresults.pl.html?ss=${E(ss)}&checkin=${out}&checkout=${back}&group_adults=${ad}&group_children=${ch+(+f.infants||0)}${[...ages,...Array(+f.infants||0).fill(0)].map(a => `&age=${a}`).join('')}&no_rooms=1&selected_currency=PLN&lang=pl${[...nflt, ...extra].length ? `&nflt=${E([...nflt, ...extra].join(';'))}` : ''}${order ? `&order=${order}` : ''}`;
     const acc = [
       { label: `Booking.com – najtańsze (${ACC[f.accType] || 'dowolny'}${f.breakfast === 'tak' ? ', ze śniadaniem' : ''})`, url: bk([], 'price'), note: `${dt.nights} nocy, ${ad} dor.${ch ? ` + ${ch} dz.` : ''}`, kind: 'cheap' },
       { label: 'Booking.com – najlepiej oceniane w dobrej cenie', url: bk(['review_score=80'], 'review_score_and_price'), note: 'ocena 8+', kind: 'best' },
@@ -163,7 +165,7 @@ window.PL = (() => {
       const date = addDays(dt.start, i), first = i === 0, last = i === days - 1;
       let d;
       if (first) d = { kind: 'arr', title: `Przylot i pierwsze kroki: ${city}`, sub: `Transfer z lotniska · zameldowanie · spacer`, am: `Dojazd na lotnisko w Polsce (być ok. 2 h przed wylotem). Wylot – godzina wg rezerwacji.`, pm: `Przylot, transfer ${T.includes('taxi') ? 'taksówką' : 'komunikacją (najtaniej)'} do noclegu. ${dest.xfer ? 'Wskazówka: ' + dest.xfer.split(';')[0] + '.' : ''}`, eve: `Krótki spacer po okolicy, ${A.includes('jedzenie') ? 'kolacja w lokalnym barze – ' + (dest.food || 'lokalne specjały') : 'kolacja i odpoczynek'}.`, tip: 'Pierwszy dzień bez pośpiechu – bagaż do noclegu, potem tylko kilka godzin zwiedzania.' };
-      else if (last) d = { kind: 'dep', title: 'Wyjazd', sub: 'Wymeldowanie · transfer na lotnisko · powrót', am: 'Śniadanie, pakowanie, wymeldowanie (zwykle do 10–11).', pm: `Transfer na lotnisko (być ok. 2 h przed wylotem). ${T.includes('car') || T.includes('scooter') ? 'Zwrot pojazdu z zapasem czasu.' : ''}`, eve: 'Przylot do Polski i powrót do domu.', tip: 'Sprawdź limit bagażu podręcznego w tanich liniach – za walizkę płaci się osobno.' };
+      else if (last && f.tripType!=='oneway') d = { kind: 'dep', title: 'Wyjazd', sub: 'Wymeldowanie · transfer na lotnisko · powrót', am: 'Śniadanie, pakowanie, wymeldowanie (zwykle do 10–11).', pm: `Transfer na lotnisko (być ok. 2 h przed wylotem). ${T.includes('car') || T.includes('scooter') ? 'Zwrot pojazdu z zapasem czasu.' : ''}`, eve: 'Przylot do Polski i powrót do domu.', tip: 'Sprawdź limit bagażu podręcznego w tanich liniach – za walizkę płaci się osobno.' };
       else {
         const a = rot[k++ % rot.length];
         if (a === 'plaze') { const b = beaches[bi++ % beaches.length]; d = { kind: 'beach', title: `Plaża: ${b[0]}`, sub: b[1], am: `Dojazd na plażę ${b[0]}${T.includes('scooter') ? ' (skuterem)' : T.includes('ebike') ? ' (e-bikiem)' : T.includes('bike') ? ' (rowerem)' : ' komunikacją'}.`, pm: 'Plażowanie, kąpiel, krem z filtrem i woda.', eve: A.includes('jedzenie') ? 'Kolacja w nadmorskiej knajpce – ryby/owoce morza, ceny w karcie sprawdź przed zamówieniem.' : 'Zachód słońca nad morzem.', tip: 'Leżaki i parasole są zwykle płatne – ręcznik plażowy to oszczędność.' }; }

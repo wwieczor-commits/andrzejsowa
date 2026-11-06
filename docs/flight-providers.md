@@ -28,3 +28,9 @@ Skyscanner: PLN, dorośli/dzieci + wiek, daty lub miesiąc. Wizz: konkretne lotn
 
 ### Kontrola linków
 Link Wizz KTW→CTA 16–22.11.2026, 2 dorosłych + dziecko: WebFetch 405, zwykły curl HTTP 200, bez przekierowania; tytuł polskiej aplikacji Wizz. To potwierdza osiągalność powłoki strony, nie pobranie cen ani wypełnienie formularza po stronie przewoźnika. Testy Playwright sprawdzają przekazywane parametry, a nie obchodzą ochronę strony docelowej.
+
+## v1.5 – publiczny fare finder Ryanair
+Rozszerzenie o `oneWayFares` / `roundTripFares` dla „Dowolne miejsce” i porównania 12 miesięcy. Publicznie opisany klient: https://github.com/cohaolain/ryanair-py (metody get_cheapest_flights / get_cheapest_return_flights).
+Próby z nagłówkiem Origin GitHub Pages: oba endpointy HTTP 200, `Access-Control-Allow-Origin: *`, prawdziwe taryfy w PLN. W przeglądarce również działają (testy bez atrap).
+Parametry dat, trasy/kraju, długości pobytu i waluty. Odpowiedzi są selekcją najtańszych taryf, nie kompletnym rozkładem. Nie zakładamy, że API zwraca każdą możliwą kombinację.
+Kalendarz dzienny: `oneWayFares/FROM/TO/cheapestPerDay`, osobny kierunek przy wyborze powrotu. Nie mieszamy ceny jednego odcinka z ceną dwóch odcinków w widoku miesiąca. Wizz i Skyscanner nadal wyłącznie odnośniki.
