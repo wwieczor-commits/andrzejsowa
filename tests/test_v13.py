@@ -29,7 +29,7 @@ with sync_playwright() as pw:
   c=b.new_context(**opts,accept_downloads=True,locale='pl-PL',timezone_id='Europe/Warsaw');p=c.new_page();errs=[];req=[]
   p.on('pageerror',lambda e:errs.append(str(e)));p.on('request',lambda r:req.append(r.url))
   p.goto(U,wait_until='networkidle')
-  ok('v1.3' in p.inner_text('#ver'),'version v1.3')
+  ok('v1.4' in p.inner_text('#ver'),'version v1.4')
   ok(p.is_disabled('#genReport') and not p.is_visible('#out'),'no auto-results/report')
   ok('Polska' in p.input_value('#fromCountrySearch') and p.input_value('#origin')=='','origin country Poland, no airport chosen')
   # Missing data validation: cannot send flight requests
@@ -69,6 +69,15 @@ with sync_playwright() as pw:
   ok(all(abs(x['total']-x['perPerson']*3)<0.01 for x in r['fl']['results']),'passenger total correct')
   p.locator('#flightsCard').scroll_into_view_if_needed();p.screenshot(path=f'{S}/{TAG}-{name}-polska-cta.png')
   ok(p.is_enabled('#genReport'),'report enabled only after real search')
+  # v1.4: honest external-provider panel (not fabricated fares)
+  ok('To linki, nie wyniki z ceną.' in p.inner_text('.external-flights'),'Wizz/Sky explicitly links, not prices')
+  ex=p.locator('#extWizz').get_attribute('href');sk=p.locator('#extSky').get_attribute('href')
+  ok('/2026-11-16/2026-11-22/2/1/0/null' in ex and 'adultsv2=2' in sk and 'childrenv2=7' in sk and 'currency=PLN' in sk,'external links prefilled dates/passengers/PLN')
+  p.locator('#extOrigin').select_option('KRK')
+  ok('/KRK/CTA/' in p.locator('#extWizz').get_attribute('href') and '/krk/cta/' in p.locator('#extSky').get_attribute('href'),'country-all panel changes exact route in both links')
+  fare=p.evaluate('()=>__planer.ctx.fl.results[0]');fareLink=p.locator('#flightsCard > .fl-card').first.locator('.compare a').first.get_attribute('href')
+  ok('/'+fare['from']+'/'+fare['to']+'/'+fare['out']+'/'+fare['back']+'/' in fareLink,'comparison at fare uses actual alternative dates, not requested dates')
+  p.locator('.external-flights').scroll_into_view_if_needed();p.screenshot(path=f'{S}/{TAG}-{name}-external-providers.png')
   # any foreign origin specific
   choose(p,'from','CTA','CTA');choose(p,'to','KRK','KRK');search(p);r=ctx(p)
   ok(len(r['fl']['results'])>0 and all(x['from']=='CTA' for x in r['fl']['results']),'foreign origin Italy/CTA → Poland/KRK')
@@ -81,6 +90,7 @@ with sync_playwright() as pw:
   p.click('#genReport');p.wait_for_selector('#reportView:not([hidden])');fr=p.frame_locator('#reportFrame');fr.locator('h1').first.wait_for()
   txt=fr.locator('body').inner_text();ok('Hiszpania · wszystkie lotniska' in txt and 'Kraków (KRK)' in txt and 'ceny z dnia' in txt,'report correct country/airport labels & real fares')
   ok('undefined' not in txt and 'Wariant oszczędny' not in txt,'report has no undefined or invented costs')
+  ok('Wizz Air i Skyscanner – ceny na ich stronach' in txt and 'Nie pobrano cen tych serwisów.' in txt,'report describes external links without inventing prices')
   p.screenshot(path=f'{S}/{TAG}-{name}-report.png')
   if name!='iphone':
    with p.expect_download(timeout=30000) as d:p.click('#pdf2')
@@ -100,6 +110,8 @@ with sync_playwright() as pw:
   # no routes from IEG to Catania
   choose(p,'from','IEG','IEG');choose(p,'to','CTA','CTA');step(p,2);p.locator('.seg label:has([value=exact])').click();search(p)
   ok('Brak lotów Ryanair' in p.inner_text('#flightsCard'),'no-route message IEG → CTA')
+  ok(p.locator('#extWizz').is_visible() and p.locator('#extSky').is_visible() and 'Brak lotów Ryanair nie oznacza braku lotów innych linii' in p.inner_text('.external-flights'),'no flights includes Wizz/Sky links and warning about coverage')
+  p.locator('.external-flights').scroll_into_view_if_needed();p.screenshot(path=f'{S}/{TAG}-{name}-no-flights-external.png')
   p.click('#genReport');p.wait_for_selector('#reportView:not([hidden])');txt=p.frame_locator('#reportFrame').locator('body').inner_text()
   ok('Brak lotów' in txt,'no-flight report uses no-flight message')
   p.click('#closeReport')

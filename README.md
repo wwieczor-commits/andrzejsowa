@@ -4,7 +4,7 @@ Aplikacja webowa (PWA, mobile-first) do samodzielnego planowania tanich wyjazdó
 Formularz → prawdziwe wyniki lotów Ryanair (publiczne API cen, CORS) + gotowe linki (Google Flights w PLN, Ryanair, Wizz Air, Skyscanner, Booking.com, transfery, skutery, e-bike, rowery, tanie jedzenie),
 plan dnia po dniu, szacunek budżetu, pogoda (Open-Meteo), raport A4 (druk / PDF) i PDF do pobrania.
 
-**Nic nie jest rezerwowane ani opłacane – aplikacja tylko generuje linki.** Ceny w aplikacji to szacunki.
+**Nic nie jest rezerwowane ani opłacane.** Ceny lotów Ryanair pochodzą z API i mają datę odczytu; pozostałe koszty podróży nie są ofertami sprzedaży.
 
 - Na żywo: https://wwieczor-commits.github.io/andrzejsowa/
 - Testy: `python3 -m http.server 8765` i `python3 tests/test_e2e.py`
@@ -20,3 +20,10 @@ Dane: publiczne lotniska Ryanair (224 porty / 34 kraje w migawce 6.11.2026, w ty
 „Wszystkie” znaczy porty z tej listy – nie każdy port na świecie. Wyniki wyszukiwania nadal obejmują wyłącznie bezpośrednie połączenia Ryanair.
 Walidacja: wszystkie braki zaznaczone na czerwono; brak zapytania o loty do czasu wybrania trasy, dat/miesiąca i liczby osób.
 Testy aktualne: `python3 tests/test_e2e.py [URL] [tag]`; migracja v1.0: `python3 tests/test_upgrade.py /tmp/v10`.
+
+## v1.4 – Wizz Air i Skyscanner bez udawanych cen
+- Wyraźny panel obu serwisów w wynikach i komunikacie o braku lotów Ryanair; porównanie przy każdej taryfie używa jej rzeczywistych dat.
+- Linki przekazują lotniska, daty i pasażerów (Skyscanner: PLN i wiek dzieci). Przy całych krajach można wybrać parę lotnisk dla linków; tryb miesiąca jest jawnie opisany.
+- Raport A4/PDF również zawiera te linki i informację, że ich cen nie pobrano.
+- **Źródłem rzeczywistych cen w aplikacji nadal jest wyłącznie Ryanair.** Wizz Air i Skyscanner nie zostały podłączone jako anonimowe źródła taryf: [wyniki weryfikacji i ograniczenia](docs/flight-providers.md).
+- Weryfikujemy strukturę parametrów linków. Wizz zwrócił HTTP 200 (powłoka aplikacji); nie potwierdza to załadowania taryf. Nie obchodzimy captchy ani nie gwarantujemy, że docelowy serwis zachowa każdy parametr.

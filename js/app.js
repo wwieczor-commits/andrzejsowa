@@ -109,13 +109,14 @@
     return `<div class="fl-leg"><span class="d">${label} ${esc(F.fmtDate(date))}</span><span class="t">${esc(F.hm(dep))} → ${esc(F.hm(arr))}</span><span class="r">${esc(from)} → ${esc(to)}</span></div>`;
   }
   function flCard(r, extra = '') {
-    const n = F.pax(ctx.f);
+    const n = F.pax(ctx.f), compare=OTHERFLIGHTS.forFare(ctx.f,r);
     return `<div class="fl-card${r.exact ? ' exact' : ''}" data-total="${r.total}">
       <div class="fl-top"><div><span class="fl-air">✈️ ${esc(r.airline)} · bez przesiadek</span><small class="fl-route">${esc(AP.byCode(r.from)?.city || r.from)} ↔ ${esc(AP.byCode(r.to)?.city || r.to)}</small>${r.exact ? '<span class="fl-badge">Twoje daty</span>' : ''}${extra}</div>
       <div><div class="fl-price">${F.zl2(r.total)}</div><div class="fl-pp">${n > 1 ? `${F.zl2(r.perPerson)} / os. × ${n}` : 'za osobę, tam i z powrotem'}</div></div></div>
       ${legHtml('Wylot', r.out, r.outDep, r.outArr, r.from, r.to)}
       ${legHtml('Powrót', r.back, r.inDep, r.inArr, r.to, r.from)}
-      <a class="fl-book" href="${esc(r.url)}" target="_blank" rel="noopener">Rezerwuj w Ryanair →</a></div>`;
+      <a class="fl-book" href="${esc(r.url)}" target="_blank" rel="noopener">Rezerwuj w Ryanair →</a>
+      <div class="compare"><span>Inne linie w tych samych dniach (ceny na stronie):</span><a href="${esc(compare.wizz)}" target="_blank" rel="noopener">Wizz Air ↗</a><a href="${esc(compare.sky)}" target="_blank" rel="noopener">Skyscanner ↗</a></div></div>`;
   }
   function renderAfterFlights() {
     const fl = ctx.fl, f = ctx.f, n = F.pax(f), bb = $('#bestBadge');
@@ -139,15 +140,33 @@
     const h = $('#barHint'); if (h) h.textContent = on ? '' : (why || 'Raport i PDF będą dostępne po wyszukaniu lotów.');
   }
   setReportEnabled(false);
+  function externalPanel(c) {
+    const selected=OTHERFLIGHTS.forContext(c); if(!selected)return '';
+    const origins=AP.members(c.f.origin),destinations=AP.members(c.f.dest);
+    const opts=(list,chosen)=>list.map(a=>`<option value="${a.code}"${a.code===chosen?' selected':''}>${esc(a.city)} · ${a.code}</option>`).join('');
+    return `<section class="external-flights" aria-label="Wizz Air i Skyscanner">
+      <h4>Sprawdź też Wizz Air i Skyscanner</h4>
+      <p class="external-note"><strong>To linki, nie wyniki z ceną.</strong> Wizz Air: oficjalne API wymaga dostępu partnerskiego. Skyscanner: API wymaga zgody partnerskiej i klucza. Ceny tych serwisów zobaczysz po otwarciu ich strony.</p>
+      ${(origins.length>1||destinations.length>1)?`<div class="external-pair"><label>Skąd<select id="extOrigin">${opts(origins,selected.from)}</select></label><label>Dokąd<select id="extDest">${opts(destinations,selected.to)}</select></label></div><p class="external-note">Wybrałeś cały kraj – linki poniżej dotyczą tylko tej pary lotnisk. Możesz ją zmienić.</p>`:`<p class="external-route">${esc(AP.byCode(selected.from)?.city || selected.from)} (${selected.from}) → ${esc(AP.byCode(selected.to)?.city || selected.to)} (${selected.to})</p>`}
+      <p class="external-note" id="extDates">${esc(selected.note)}</p>
+      <div class="external-links"><a class="external-wizz" id="extWizz" href="${esc(selected.wizz)}" target="_blank" rel="noopener"><b>Wizz Air ↗</b><small>Trasa, daty i osoby wypełnione</small></a><a class="external-sky" id="extSky" href="${esc(selected.sky)}" target="_blank" rel="noopener"><b>Skyscanner ↗</b><small>Porównaj wiele linii · PLN</small></a></div>
+      <p class="external-note">Brak lotów Ryanair nie oznacza braku lotów innych linii. Serwis może poprosić o zgodę na cookies lub potwierdzenie, że jesteś człowiekiem.</p>
+    </section>`;
+  }
+  function bindExternal(c) {
+    const change=()=>{const first=OTHERFLIGHTS.forContext(c);const links=OTHERFLIGHTS.links(c.f,c.dt,$('#extOrigin')?.value||first.from,$('#extDest')?.value||first.to);if(!links)return;$('#extWizz').href=links.wizz;$('#extSky').href=links.sky;};
+    $('#extOrigin')?.addEventListener('change',change);$('#extDest')?.addEventListener('change',change);
+  }
   function renderFlights() {
     const el = $('#flightsCard'), c = ctx; el.hidden = false;
     const fl = c.fl;
     renderAfterFlights();
     if (!fl || fl.loading) { el.innerHTML = `<div class="fl-head"><h3>✈️ Znalezione loty</h3></div><div class="fl-load"><span class="spin"></span><span id="flProg">${esc((fl && fl.progress) || 'Szukam lotów…')}</span></div>`; return; }
-    if (fl.failed) { el.innerHTML = `<h3>✈️ Znalezione loty</h3><div class="fl-msg">Nie udało się połączyć z wyszukiwarką lotów (brak internetu?). Spróbuj ponownie albo użyj linków poniżej.</div><button class="btn ghost fl-more" id="flRetry">Spróbuj ponownie</button>`; $('#flRetry').onclick = () => run(); return; }
+    if (fl.failed) { el.innerHTML = `<h3>✈️ Znalezione loty</h3><div class="fl-msg">Nie udało się połączyć z wyszukiwarką lotów (brak internetu?). Spróbuj ponownie albo użyj linków poniżej.</div><button class="btn ghost fl-more" id="flRetry">Spróbuj ponownie</button>${externalPanel(c)}`; bindExternal(c); $('#flRetry').onclick = () => run(); return; }
     const r = fl.results;
     let h = `<div class="fl-head"><h3>✈️ Znalezione loty</h3></div><p class="fl-stamp">Ceny z dnia ${esc(F.stamp(fl.checkedAt))} · źródło: ${esc(fl.source)} · ${r.length} ${r.length === 1 ? 'wynik' : 'wyników'}, od najtańszego</p>`;
     if (fl.message) h += `<div class="fl-msg">${esc(fl.message)}</div>`;
+    h += externalPanel(c);
     if (r.length) {
       h += r.slice(0, 6).map(x => flCard(x)).join('');
       if (r.length > 6) h += `<details class="more"><summary>Pokaż więcej wyników (${r.length - 6})</summary>${r.slice(6, 40).map(x => flCard(x)).join('')}</details>`;
@@ -165,8 +184,8 @@
       }
       h += `</div>`;
     } else if (!r.length && !fl.message) h += `<div class="fl-msg">Brak wyników.</div>`;
-    h += `<p class="fl-note">Wyszukiwanie obejmuje loty bezpośrednie Ryanair (najtańszy lot danego dnia). Wizz Air i inne linie – sprawdź linkami poniżej. Cena łączna = taryfa za osobę × liczba osób, bez bagażu rejestrowanego; ostateczną cenę pokaże strona przewoźnika.</p>`;
-    el.innerHTML = h;
+    h += `<p class="fl-note">Wyszukiwanie obejmuje loty bezpośrednie Ryanair (najtańszy lot danego dnia). Wizz Air i Skyscanner – osobne linki powyżej (ich cen nie pobieramy). Cena łączna = taryfa za osobę × liczba osób, bez bagażu rejestrowanego; ostateczną cenę pokaże strona przewoźnika.</p>`;
+    el.innerHTML = h;bindExternal(c);
     el.querySelectorAll('.use').forEach(b => b.onclick = () => {
       if (b.dataset.origin) fromPicker.choose(b.dataset.origin);
       if (b.dataset.dest) toPicker.choose(b.dataset.dest);

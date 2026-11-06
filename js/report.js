@@ -73,6 +73,9 @@ window.REPORT = (() => {
         + `<p class="footnote">Prawdziwe ceny z publicznego API Ryanair (najtańszy lot danego dnia, tam i z powrotem), pobrane ${esc(F.stamp(FLs.checkedAt))}. Cena łączna = taryfa za osobę × ${persons}; zwykle bez bagażu rejestrowanego. Ceny zmieniają się – sprawdź przed rezerwacją. Wizz Air i inne linie: linki poniżej.</p>`;
     }
     const bestFl = FLs && FLs.results.length ? (FLs.results.find(r => r.exact) || FLs.results[0]) : null;
+    const ext=OTHERFLIGHTS.forContext(c);
+    const extHtml=ext ? `<h3>Wizz Air i Skyscanner – ceny na ich stronach</h3><p class="footnote">Nie pobrano cen tych serwisów. Oficjalne API wymagają dostępu partnerskiego (Skyscanner również klucza). Brak lotów Ryanair nie wyklucza innych linii.</p><p class="footnote">${ext.from} → ${ext.to} · ${esc(ext.note)}${AP.isAll(f.origin)||AP.isAll(f.dest)?' · linki dotyczą wskazanej pary lotnisk, nie całego kraju.':''}</p><p>${A(reg(`Wizz Air ${ext.from}→${ext.to}`,ext.wizz),'Sprawdź Wizz Air ↗','book-link')} ${A(reg(`Skyscanner ${ext.from}→${ext.to}`,ext.sky),'Sprawdź Skyscanner ↗','book-link')}</p>` : '';
+
     if (bestFl) {
       tl[1] = ['', `${F.fmtDate(bestFl.out)}, ${F.hm(bestFl.outDep)}`, `Wylot ${bestFl.from} → ${bestFl.to}, Ryanair, przylot ${F.hm(bestFl.outArr)} (najtańsza znaleziona opcja)`];
       tl[3] = ['stay', `${L.dm(new Date(bestFl.out + 'T00:00:00'))}–${L.dmy(new Date(bestFl.back + 'T00:00:00'))}`, tl[3][2]];
@@ -125,6 +128,7 @@ window.REPORT = (() => {
 </div>
 <h2>Loty – znalezione (Ryanair, ceny z dnia ${FLs ? esc(F.stamp(FLs.checkedAt)) : '—'})</h2>
 ${realFl}
+${extHtml}
 <h3>Inne wyszukiwarki lotów</h3>
 <table><thead><tr><th>Trasa</th><th>Daty</th><th>Wyszukiwarka</th><th>Uwagi</th><th>Cena</th><th></th></tr></thead><tbody>${flRows}</tbody></table>
 <p class="footnote">${dt.sample ? 'Tryb „miesiąc”: Skyscanner i Ryanair pokazują cały miesiąc; linki Google Flights / Wizz Air / Booking używają dat z połowy miesiąca – zmień je na stronie.' : 'Linki otwierają wyszukiwarki z Twoimi datami.'}</p>

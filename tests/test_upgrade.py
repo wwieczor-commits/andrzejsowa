@@ -27,11 +27,11 @@ with sync_playwright() as pw:
     # 2) wejście z prawdziwym serwerem
     t = time.time(); p.goto(U, wait_until='networkidle'); p.wait_for_timeout(2500)
     v = p.inner_text('#ver'); print('2) po aktualizacji:', v, f'({time.time()-t:.1f}s)', '| baner „Nowa wersja” widoczny:', p.is_visible('#updBar'))
-    if 'v1.3' not in v:
+    if 'v1.4' not in v:
         p.reload(wait_until='networkidle'); v = p.inner_text('#ver'); print('   po 2. odświeżeniu:', v)
     print('   wyniki/raport pokazane automatycznie?', p.is_visible('#out'), p.is_visible('#reportView'), '| Raport wyłączony:', p.is_disabled('#genReport'))
     print('   zapamiętany cel:', p.input_value('#dest'))
     caches = p.evaluate('caches.keys()'); print('   cache:', caches)
     p.screenshot(path=f'{SH}/upgrade-po-aktualizacji.png')
-    ok = 'v1.3' in v and not p.is_visible('#out') and p.is_disabled('#genReport') and all('v4' in c for c in caches)
+    ok = 'v1.4' in v and not p.is_visible('#out') and p.is_disabled('#genReport') and all('v5' in c for c in caches)
     print('WYNIK:', 'OK' if ok else 'BŁĄD'); ctx.close(); b.close(); sys.exit(0 if ok else 1)

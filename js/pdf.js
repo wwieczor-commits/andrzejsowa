@@ -119,6 +119,13 @@ window.PDFR = (() => {
         { columnStyles: { 0: { cellWidth: 44, textColor: ACCENT, fontStyle: 'bold' }, 4: { fontStyle: 'bold' }, 5: { cellWidth: 22 } }, ...merge(linkCol(5, rr.map(r => reg(`Ryanair ${r.from}→${r.to} ${r.out}/${r.back}`, r.url)), () => 'Rezerwuj →'), nameLinks(0, rr.map(r => r.url))) });
       para(`Prawdziwe ceny z publicznego API Ryanair (najtańszy lot danego dnia), pobrane ${F.stamp(FLs.checkedAt)}. Cena łączna = taryfa za osobę × ${persons}; zwykle bez bagażu rejestrowanego. Wizz Air i inne linie – linki poniżej.`, M, CW, 6.8, 'normal', MUTED);
     }
+    const ext=OTHERFLIGHTS.forContext(c);
+    if(ext){
+      h2('Wizz Air i Skyscanner – ceny na ich stronach');
+      para('Nie pobrano cen tych serwisów. Oficjalne API wymagają dostępu partnerskiego (Skyscanner również klucza). Brak lotów Ryanair nie wyklucza innych linii.',M,CW,7,'normal',MUTED);
+      para(`${ext.from} → ${ext.to} · ${ext.note}${AP.isAll(f.origin)||AP.isAll(f.dest)?' · linki dotyczą wskazanej pary lotnisk, nie całego kraju.':''}`,M,CW,7,'normal',MUTED);
+      need(8);pill('Sprawdź Wizz Air →',M,y+3.5,reg(`Wizz Air ${ext.from}→${ext.to}`,ext.wizz));pill('Sprawdź Skyscanner →',M+42,y+3.5,reg(`Skyscanner ${ext.from}→${ext.to}`,ext.sky));y+=7;
+    }
     h2('Inne wyszukiwarki lotów');
     const lim = AP.isAll(f.origin) ? 12 : 8, fl = G('loty').items, flShow = fl.slice(0, lim);
     table(['Trasa / serwis', 'Daty', 'Uwagi', 'Cena', ''], flShow.map(i => [i.label, dt.mode === 'month' ? `${L.MONTHS[dt.m - 1]} ${dt.y}` : `${L.dm(dt.start)} ↔ ${L.dm(dt.end)}`, i.note || '', 'sprawdź w linku', '']),
