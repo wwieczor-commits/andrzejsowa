@@ -99,7 +99,7 @@ def run(pw, name, ctx_opts, browser):
     pg.click('#barLinks'); pg.wait_for_timeout(500)
     L2 = links(pg)
     ok(any('/transport/loty/pl/cta/' in l['u'] and 'oym=2702' in l['u'] for l in L2), 'Miesiąc + wszystkie: Skyscanner z całej Polski, cały miesiąc')
-    ok(sum(1 for l in L2 if 'google.com/travel/flights' in l['u']) == 16, 'Miesiąc + wszystkie: Google Flights dla każdego lotniska (+ cała Polska)')
+    ok(sum(1 for l in L2 if 'google.com/travel/flights' in l['u']) == 15, 'Miesiąc + wszystkie: Google Flights dla każdego z 15 lotnisk')
     ok(any('fare-finder' in l['u'] and 'daysTrip=5' in l['u'] for l in L2), 'Miesiąc: Ryanair fare-finder')
     ok(not errs, f'brak błędów JS {errs[:2]}')
     ctx.close()

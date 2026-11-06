@@ -53,15 +53,10 @@ window.PL = (() => {
 
     // --- LOTY ---
     const fl = [];
-    const gfUrl = (from) => {
-      const q = dt.mode === 'month'
-        ? `Flights to ${gTo} from ${from} in ${['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'][dt.m - 1]} ${dt.y} for ${dt.nights} days ${paxTxt}`
-        : `Flights to ${gTo} from ${from} on ${out} through ${back} ${paxTxt}`;
-      return `https://www.google.com/travel/flights?q=${E(q)}&curr=PLN&hl=pl&gl=PL`;
-    };
+    // Google Flights rozumie tylko jedno lotnisko w q= (sprawdzone) – w trybie „miesiąc” daty przykładowe + kalendarz cen na stronie
+    const gfUrl = (from) => `https://www.google.com/travel/flights?q=${E(`Flights to ${gTo} from ${from} on ${out} through ${back} ${paxTxt}`)}&curr=PLN&hl=pl&gl=PL`;
     const orig = origins(f);
-    if (f.origin === 'ALL') fl.push({ label: 'Google Flights – wszystkie lotniska w Polsce', url: gfUrl('Poland'), note: dt.mode === 'month' ? 'cały miesiąc, ceny w PLN' : 'ceny w PLN' });
-    orig.forEach(a => fl.push({ label: `Google Flights – z ${a.name} (${a.code})`, url: gfUrl(a.code), note: 'ceny w PLN', perAirport: f.origin === 'ALL' }));
+    orig.forEach(a => fl.push({ label: `Google Flights – z ${a.name} (${a.code})`, url: gfUrl(a.code), note: dt.sample ? 'ceny w PLN · przykładowe daty – otwórz kalendarz cen' : 'ceny w PLN', perAirport: f.origin === 'ALL' }));
 
     const sky = (from) => {
       const base = `https://www.skyscanner.pl/transport/loty/${from.toLowerCase()}/${(dest.iata || '').toLowerCase()}/`;
