@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Andrzej Sowa – logo">
+  <circle cx="32" cy="32" r="31" fill="#0e1a2b"/>
+  <path d="M6 42c8-4 14-4 22 0s14 4 22 0 10-3 10-3v8c0 6-12 15-28 15S5 54 4 46z" fill="#1d3a5c"/>
+  <path d="M8 46c7-3 13-3 20 0s14 3 21 0" stroke="#3b82f6" stroke-width="2" fill="none" stroke-linecap="round" opacity=".8"/>
+  <!-- sowa -->
+  <path d="M20 40c0-11 5-20 12-20s12 9 12 20c0 2-2 4-4 4H24c-2 0-4-2-4-4z" fill="#f4f6f9"/>
+  <path d="M20 22l5 5h14l5-5-3 8H23z" fill="#f4f6f9"/>
+  <circle cx="27" cy="31" r="4.6" fill="#0e1a2b"/><circle cx="37" cy="31" r="4.6" fill="#0e1a2b"/>
+  <circle cx="27.8" cy="30.4" r="1.8" fill="#e0452b"/><circle cx="37.8" cy="30.4" r="1.8" fill="#e0452b"/>
+  <path d="M30.5 35h3L32 38z" fill="#e0452b"/>
+  <path d="M26 41h12" stroke="#d8dee8" stroke-width="1.4" stroke-linecap="round"/>
+  <!-- samolot -->
+  <path d="M41 13l11-4c1.4-.5 2.6.7 2 2l-4 11-2-1 1.8-6.6-5 2.6.4 2.6-1.2 1-1.6-2.6-2.6-1.6 1-1.2 2.6.4 2.6-5L42 15z" fill="#e0452b"/>
+  <path d="M14 18c6-6 15-9 24-7" stroke="#e0452b" stroke-width="1.6" stroke-dasharray="2 3" fill="none" stroke-linecap="round"/>
+</svg>

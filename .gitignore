@@ -1,0 +1,4 @@
+screenshots/*-str-*.png
+screenshots/*.pdf
+screenshots/*-calosc.png
+__pycache__/
