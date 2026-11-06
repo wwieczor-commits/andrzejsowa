@@ -24,7 +24,7 @@ window.REPORT = (() => {
   const fileName = c => `Wyjazd_${(c.dest.city || c.dest.name).replace(/[^\p{L}\p{N}]+/gu, '_')}_Andrzej_Sowa_${L.iso(c.dt.start)}`;
 
   function html(c) {
-    const { f, dest, dt, groups, plan, est, wx } = c;
+    const { f, dest, dt, groups, plan, wx } = c;
     const G = id => (groups.find(g => g.id === id) || { items: [] });
     const ad = +f.adults || 1, ch = +f.children || 0, persons = ad + ch;
     const osob = persons === 1 ? '1 osoba' : `${persons} ${persons < 5 ? 'osoby' : 'osób'}`;
@@ -32,12 +32,11 @@ window.REPORT = (() => {
     const origCode = f.origin === 'ALL' ? 'PL' : f.origin;
     const destCode = dest.iata || '';
     const range = `${L.dm(dt.start)}–${L.dmy(dt.end)}`;
-    const when = dt.mode === 'month' ? `${L.MONTHS[dt.m - 1]} ${dt.y} · ${dt.nights} nocy (przykładowo ${range})` : `${dt.start.getDate()}–${dt.end.getDate()} ${L.MONTHS_GEN[dt.end.getMonth()]} ${dt.end.getFullYear()}`.replace(/^(\d+)–(\d+) /, (m, a, b) => dt.start.getMonth() === dt.end.getMonth() ? `${a}–${b} ` : `${L.dm(dt.start)}–${L.dm(dt.end)} `);
+    const when = dt.mode === 'month' ? `${L.MONTHS[dt.m - 1]} ${dt.y} · ${dt.nights} nocy` : `${L.dmy(dt.start)} – ${L.dmy(dt.end)}`;
     const today = L.dmy(new Date());
     const allLinks = [];
     const reg = (label, url) => { allLinks.push([label, url]); return url; };
     const fmt = n => L.zl(n);
-    const rangeTxt = `${fmt(est.low)} – ${fmt(est.high)}`;
 
     // --- Harmonogram ---
     const tl = [];
@@ -47,7 +46,7 @@ window.REPORT = (() => {
     tl.push(['stay', `${L.dm(dt.start)}–${L.dmy(dt.end)}`, `${dt.nights} ${dt.nights === 1 ? 'noc' : dt.nights < 5 ? 'noce' : 'nocy'} · ${ACC[f.accType] || 'dowolny'}${f.breakfast === 'tak' ? ' ze śniadaniem' : ''} · ${DIST[f.distance]}`]);
     tl.push(['stay', `${L.DOW_S[dt.end.getDay()].replace(/^./, x => x.toUpperCase())} ${L.dmy(dt.end)}`, 'Wymeldowanie → transfer na lotnisko (być ok. 2 h przed wylotem)']);
     tl.push(['', `${L.DOW_S[dt.end.getDay()].replace(/^./, x => x.toUpperCase())} ${L.dmy(dt.end)}, godzina wg rezerwacji`, `Wylot ${destCode || dest.city} → ${origCode}, powrót do domu`]);
-    const tlHtml = tl.map(([k, w, t]) => `<div class="tl-item ${k}"><div class="when">${esc(w)}</div><div class="what">${esc(t)}</div></div>`).join('');
+    let tlHtml = tl.map(([k, w, t]) => `<div class="tl-item ${k}"><div class="when">${esc(w)}</div><div class="what">${esc(t)}</div></div>`).join('');
 
     // --- Dojazd z lotniska ---
     const xr = G('transfery').items.map(i => `<tr><td>${esc(dest.iata || 'Lotnisko')} ↔ centrum</td><td>${esc(TRANSPORT[i.t] || 'Komunikacja')}</td><td>${esc(i.note || '')}</td><td>${A(reg(i.label, i.url), 'Sprawdź →', 'book-link')}</td></tr>`).join('');
@@ -74,6 +73,12 @@ window.REPORT = (() => {
         + `<p class="footnote">Prawdziwe ceny z publicznego API Ryanair (najtańszy lot danego dnia, tam i z powrotem), pobrane ${esc(F.stamp(FLs.checkedAt))}. Cena łączna = taryfa za osobę × ${persons}; zwykle bez bagażu rejestrowanego. Ceny zmieniają się – sprawdź przed rezerwacją. Wizz Air i inne linie: linki poniżej.</p>`;
     }
     const bestFl = FLs && FLs.results.length ? (FLs.results.find(r => r.exact) || FLs.results[0]) : null;
+    if (bestFl) {
+      tl[1] = ['', `${F.fmtDate(bestFl.out)}, ${F.hm(bestFl.outDep)}`, `Wylot ${bestFl.from} → ${bestFl.to}, Ryanair, przylot ${F.hm(bestFl.outArr)} (najtańsza znaleziona opcja)`];
+      tl[3] = ['stay', `${L.dm(new Date(bestFl.out + 'T00:00:00'))}–${L.dmy(new Date(bestFl.back + 'T00:00:00'))}`, tl[3][2]];
+      tl[5] = ['', `${F.fmtDate(bestFl.back)}, ${F.hm(bestFl.inDep)}`, `Wylot ${bestFl.to} → ${bestFl.from}, Ryanair, przylot ${F.hm(bestFl.inArr)}`];
+      tlHtml = tl.map(([k, w, t]) => `<div class="tl-item ${k}"><div class="when">${esc(w)}</div><div class="what">${esc(t)}</div></div>`).join('');
+    }
 
     // --- Nocleg ---
     const accRows = G('nocleg').items.map((i, n) => `<tr${n === 0 ? ' class="highlight"' : ''}><td>${n === 0 ? '<span class="tag">1</span>' : ''}${A(reg(i.label, i.url), esc(i.label))}</td><td>${esc(ACC[f.accType] || 'dowolny')}</td><td>${f.breakfast === 'tak' || i.kind === 'bf' ? 'tak' : f.breakfast === 'nie' ? 'nie' : 'obojętne'}</td><td>${esc(DIST[f.distance])}</td><td>${dt.nights}</td><td class="chk">sprawdź</td><td>${A(i.url, 'Szukaj →', 'book-link')}</td></tr>`).join('');
@@ -91,28 +96,26 @@ window.REPORT = (() => {
     // --- Wypożyczalnie: skutery / e-bike / rower ---
     const rentalSection = (id, title, foot) => {
       const g = groups.find(x => x.id === id); if (!g) return '';
-      const rows = g.items.map(i => `<tr${i.verified ? ' class="ver-row"' : ''}><td>${A(reg(i.label, i.url), esc(i.label))}${i.verified ? '<br><span class="muted">sprawdzone 6.11.2026</span>' : ''}</td><td>${esc(i.note || '')}</td><td class="chk">${i.verified ? 'na stronie firmy' : 'sprawdź w wynikach'}</td><td>${A(i.url, i.verified ? 'Strona →' : 'Szukaj →', 'book-link')}</td></tr>`).join('');
+      const rows = g.items.map(i => `<tr${i.verified ? ' class="ver-row"' : ''}><td>${A(reg(i.label, i.url), esc(i.label))}</td><td>${esc(i.note || '')}</td><td class="chk">${i.verified ? 'na stronie firmy' : 'sprawdź w wynikach'}</td><td>${A(i.url, i.verified ? 'Strona →' : 'Szukaj →', 'book-link')}</td></tr>`).join('');
       return `<div class="keep-together"><h2>${esc(title)}</h2><p class="footnote" style="margin:2px 0 5px;">${esc(g.note || '')}</p><table><thead><tr><th style="width:34%">Wypożyczalnia / wyszukiwanie</th><th style="width:36%">Co znajdziesz</th><th>Cena</th><th></th></tr></thead><tbody>${rows}</tbody></table>${foot ? `<p class="footnote">${foot}</p>` : ''}</div>`;
     };
-    const rentals = rentalSection('skutery', `Wypożyczalnie skuterów (${dest.city})`, dest.rentals ? 'Firmy z niebieskim paskiem sprawdzone 6.11.2026 na ich stronach (raport Katania); warunki mogą się zmienić. Pozostałe pozycje to wyszukiwania – nie wymyślamy nazw firm.' : 'Linki prowadzą do wyszukiwania lokalnych wypożyczalni – porównaj opinie, kaucję i wymagane prawo jazdy.')
+    const rentals = rentalSection('skutery', `Wypożyczalnie skuterów (${dest.city})`, 'Linki prowadzą do wyszukiwania lokalnych wypożyczalni – porównaj opinie, kaucję i wymagane prawo jazdy.')
       + rentalSection('ebike', `Rower elektryczny (e-bike) – ${dest.city}`, '')
       + rentalSection('rower', `Rower (zwykły) – ${dest.city}`, '');
 
     const food = G('jedzenie').items; food.forEach(i => reg(i.label, i.url));
-    const budItems = [[`${fmt(est.flights[0])}–${fmt(est.flights[1])}`, 'Loty (tanie linie)'], [`${fmt(est.accom[0])}–${fmt(est.accom[1])}`, `Nocleg ${dt.nights} nocy`], [`~${fmt(est.food)}`, 'Jedzenie'], ...est.items.map(([a, b]) => [`~${fmt(b)}`, a])];
 
     const p1 = `
 <div class="header"><div><h1>Wyjazd ${esc(f.origin === 'ALL' ? 'z Polski' : orig.split(' ')[0])} – ${esc(dest.name)}<br>${esc(when)} – propozycja</h1>
 <div class="subtitle">Dla: Andrzej Sowa · ${osob}${ch ? ` (${ad} dor. + ${ch} dz.)` : ''} · źródła: Google Flights, Ryanair, Wizz Air, Skyscanner, Booking.com · wygenerowano ${today}</div></div>
-<div class="badge">Szacunek łącznie<span>${rangeTxt}</span></div></div>
-<h2>Podsumowanie kosztów <span class="est">szacunek</span></h2>
+<div class="badge">${bestFl ? `Najtańszy lot${persons > 1 ? ` (${persons} os.)` : ''}<span>${esc(F.zl2(bestFl.total))}</span>` : FLs ? 'Loty Ryanair<span>brak</span>' : 'Loty<span>—</span>'}</div></div>
+<h2>Podsumowanie</h2>
 <div class="summary">
- <div class="summary-card best"><div class="label">Wariant oszczędny (szacunek)</div><div class="total">ok. ${fmt(est.low)}</div><div class="breakdown">Loty ~${fmt(est.flights[0])} + nocleg ~${fmt(est.accom[0])}<br>+ jedzenie, transport${est.att ? ', bilety' : ''} (taniej)</div></div>
- <div class="summary-card"><div class="label">Wariant wygodniejszy (szacunek)</div><div class="total">ok. ${fmt(est.high)}</div><div class="breakdown">Loty ~${fmt(est.flights[1])} + nocleg ~${fmt(est.accom[1])}<br>+ jedzenie, transport${est.att ? ', bilety' : ''} (wygodniej)</div></div>
- ${bestFl ? `<div class="summary-card"><div class="label">Najtańszy znaleziony lot</div><div class="total">${esc(F.zl2(bestFl.total))}</div><div class="breakdown">Ryanair ${bestFl.from} ⇄ ${bestFl.to}, ${esc(F.fmtDate(bestFl.out))} – ${esc(F.fmtDate(bestFl.back))}<br>prawdziwa cena, z dnia ${esc(F.stamp(FLs.checkedAt))}</div></div>` : ''}
- ${est.budget ? `<div class="summary-card"><div class="label">Twój budżet</div><div class="total">${fmt(est.budget)}</div><div class="breakdown">${est.low > est.budget ? 'Może nie wystarczyć – krótszy pobyt / hostel / inny miesiąc.' : est.high > est.budget ? 'Wystarczy przy tańszych wyborach.' : 'Powinien wystarczyć.'}</div></div>` : ''}
+ ${bestFl ? `<div class="summary-card best"><div class="label">Najtańszy znaleziony lot (prawdziwa cena)</div><div class="total">${esc(F.zl2(bestFl.total))}</div><div class="breakdown">Ryanair ${bestFl.from} ⇄ ${bestFl.to} · ${esc(F.fmtDate(bestFl.out))} ${esc(F.hm(bestFl.outDep))} – ${esc(F.fmtDate(bestFl.back))} ${esc(F.hm(bestFl.inDep))}<br>${persons > 1 ? `${esc(F.zl2(bestFl.perPerson))}/os. × ${persons} · ` : ''}ceny z dnia ${esc(F.stamp(FLs.checkedAt))}</div></div>`
+   : `<div class="summary-card best"><div class="label">Loty</div><div class="total">Brak lotów</div><div class="breakdown">${esc(FLs && FLs.message || 'Wyszukiwanie nie zwróciło wyników.')}</div></div>`}
+ ${+f.budget > 0 ? `<div class="summary-card"><div class="label">Twój budżet</div><div class="total">${fmt(+f.budget)}</div><div class="breakdown">${bestFl ? `Po opłaceniu lotu zostaje ${+f.budget - bestFl.total >= 0 ? esc(F.zl2(+f.budget - bestFl.total)) : 'brak (lot droższy niż budżet)'} na nocleg, jedzenie i transport.` : 'Brak lotów do porównania.'}</div></div>` : ''}
 </div>
-<p class="footnote">Kwoty to orientacyjne widełki z wbudowanego modelu cen (poziom cen kierunku, sezon, liczba osób) – <strong>nie są cenami ofert</strong>. Aktualne ceny pokazują linki poniżej.</p>
+<p class="footnote">W raporcie są tylko prawdziwe ceny lotów z wyszukiwania i Twoje dane z formularza. Ceny noclegów i atrakcji sprawdź w linkach – aplikacja ich nie zgaduje.</p>
 <div class="cols2" style="margin-top:6px;">
  <div><h2 style="margin-top:0;">Harmonogram</h2><div class="timeline">${tlHtml}</div>
   <div class="tl-note">Godziny lotów zależą od wybranej oferty – po rezerwacji wpisz je do planu. Na lotnisku bądź ok. 2 h przed wylotem.</div></div>
@@ -124,7 +127,7 @@ window.REPORT = (() => {
 ${realFl}
 <h3>Inne wyszukiwarki lotów</h3>
 <table><thead><tr><th>Trasa</th><th>Daty</th><th>Wyszukiwarka</th><th>Uwagi</th><th>Cena</th><th></th></tr></thead><tbody>${flRows}</tbody></table>
-<p class="footnote">Najtańsze taryfy tanich linii zwykle bez bagażu rejestrowanego. ${dt.sample ? 'Tryb „miesiąc”: Skyscanner i Ryanair pokazują cały miesiąc, pozostałe linki mają przykładowe daty – zmień je na stronie.' : ''}</p>
+<p class="footnote">${dt.sample ? 'Tryb „miesiąc”: Skyscanner i Ryanair pokazują cały miesiąc; linki Google Flights / Wizz Air / Booking używają dat z połowy miesiąca – zmień je na stronie.' : 'Linki otwierają wyszukiwarki z Twoimi datami.'}</p>
 <h2>Nocleg (${dt.nights} nocy, ${f.breakfast === 'tak' ? 'ze śniadaniem' : f.breakfast === 'nie' ? 'bez śniadania' : 'śniadanie obojętne'}, Booking.com)</h2>
 <p class="muted">${osob}, ${L.dmy(dt.start)}–${L.dmy(dt.end)}${dt.sample ? ' (daty przykładowe)' : ''} · typ: ${esc(ACC[f.accType] || 'dowolny')} · ${esc(DIST[f.distance])}</p>
 <table><thead><tr><th>Wyszukiwanie</th><th>Typ</th><th>Śniadanie</th><th>Odległość</th><th>Noce</th><th>Cena</th><th></th></tr></thead><tbody>${accRows}</tbody></table>
@@ -150,13 +153,17 @@ ${rentals || '<p class="muted">Nie wybrano skutera ani roweru – zaznacz je w f
   ${dest.cur ? `<li><strong>Waluta:</strong> ${esc(dest.cur)} – płać kartą w walucie lokalnej (bez przewalutowania DCC).</li>` : ''}
   <li><strong>Dokumenty:</strong> dowód / paszport, EKUZ (UE), ubezpieczenie podróżne.</li>
  </ul></div>
- <div class="prac-box"><h3>Szacunek budżetu (orientacyjnie) <span class="est">szacunek</span></h3>
-  <div class="budget-row">${budItems.map(([v, l]) => `<div class="budget-item"><div class="bv">${esc(v)}</div>${esc(l)}</div>`).join('')}</div>
-  <p class="footnote" style="margin-top:5px;">Razem ok. ${rangeTxt} dla ${osob}. Model orientacyjny – nie są to ceny ofert; prawdziwe ceny w linkach.</p></div>
+ <div class="prac-box"><h3>Budżet</h3>
+  <ul>
+   ${+f.budget > 0 ? `<li><strong>Twój budżet:</strong> ${fmt(+f.budget)}</li>` : '<li>Nie podano budżetu.</li>'}
+   ${bestFl ? `<li><strong>Loty (prawdziwa cena, ${esc(F.stamp(FLs.checkedAt))}):</strong> ${esc(F.zl2(bestFl.total))}</li>` : '<li><strong>Loty:</strong> brak lotów Ryanair dla tych danych.</li>'}
+   ${+f.budget > 0 && bestFl ? `<li><strong>Zostaje na resztę:</strong> ${esc(F.zl2(+f.budget - bestFl.total))}</li>` : ''}
+   <li>Nocleg: ceny w linkach Booking.com (strona 1).</li>
+  </ul></div>
 </div>
 <div class="links-box keep-together" style="margin-top:6px;font-size:5.6pt;line-height:1.3;"><strong style="font-size:6.5pt;">Linki (pełne URL):</strong><br>
 ${allLinks.map(([l, u]) => `${esc(l)}: ${A(u, esc(u))}`).join('<br>\n')}</div>
-<div class="footer"><strong>Uwagi:</strong> Raport wygenerowany ${today} w aplikacji „Andrzej Sowa · Planer tanich wyjazdów”. Nic nie zostało zarezerwowane ani opłacone. Ceny w raporcie to szacunki – aktualne ceny i dostępność sprawdź w linkach. Pogoda = ${W ? esc(W.kind === 'forecast' ? 'prognoza Open-Meteo' : 'średnie z 5 lat (Open-Meteo), nie prognoza') : 'brak danych'}. Propozycja dla Andrzeja Sowy · © Wojciech Wieczorek.</div>`;
+<div class="footer"><strong>Uwagi:</strong> Raport wygenerowany ${today} w aplikacji „Andrzej Sowa · Planer tanich wyjazdów”. Nic nie zostało zarezerwowane ani opłacone. Ceny lotów pochodzą z wyszukiwania Ryanair (stan na ${FLs ? esc(F.stamp(FLs.checkedAt)) : '—'}); pozostałe ceny sprawdź w linkach. Pogoda = ${W ? esc(W.kind === 'forecast' ? 'prognoza Open-Meteo' : 'średnie z 5 lat (Open-Meteo), nie prognoza') : 'brak danych'}. Propozycja dla Andrzeja Sowy · © Wojciech Wieczorek.</div>`;
 
     const base = location.href.replace(/[#?].*$/, '').replace(/[^/]*$/, '');
     return `<!DOCTYPE html><html lang="pl"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><base href="${esc(base)}" target="_blank"><title>${esc(fileName(c))}</title><link rel="stylesheet" href="${esc(base)}assets/fonts.css"><style>${CSS}${EXTRA}</style></head><body><div class="screen-pad">${p1}${p2}${p3}</div></body></html>`;

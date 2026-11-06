@@ -18,8 +18,7 @@
   $('#sugg').addEventListener('click', e => { const b = e.target.closest('button'); if (b) { $('#dest').value = b.dataset.v; save(); } });
 
   // domyślne daty: za ok. 3 tygodnie, 7 nocy
-  const t0 = L.addDays(new Date(), 21); t0.setHours(0, 0, 0, 0);
-  $('#depart').value = L.iso(t0); $('#ret').value = L.iso(L.addDays(t0, 7)); $('#month').value = L.iso(L.addDays(new Date(), 35)).slice(0, 7);
+  // brak przykładowych dat – użytkownik wybiera sam
   $('#depart').min = L.iso(new Date());
 
   // --- zapis / odczyt formularza ---
@@ -45,9 +44,9 @@
     form.querySelector('.mode-exact').hidden = m !== 'exact'; form.querySelector('.mode-month').hidden = m !== 'month';
     form.querySelector('.ages').hidden = !(+form.children.value > 0);
   }
-  form.addEventListener('input', () => { syncMode(); save(); });
+  form.addEventListener('input', () => { syncMode(); save(); if (ctx && ctx.fl && !ctx.fl.loading) { ctx = null; setReportEnabled(false, 'Zmieniłeś dane – kliknij „Szukaj lotów” ponownie.'); } });
   form.addEventListener('change', () => {
-    if (+new Date($('#ret').value) <= +new Date($('#depart').value)) $('#ret').value = L.iso(L.addDays(new Date($('#depart').value), 7));
+    if ($('#depart').value && (!$('#ret').value || +new Date($('#ret').value) <= +new Date($('#depart').value))) $('#ret').value = L.iso(L.addDays(new Date($('#depart').value), 7));
     syncMode(); save();
   });
   syncMode();
@@ -75,18 +74,18 @@
   function compute() {
     const f = read();
     const dest = L.resolveDest(f.dest), dt = L.computeDates(f);
-    const groups = L.buildLinks(f, dest, dt), plan = L.buildPlan(f, dest, dt), est = L.estimate(f, dest, dt, plan);
-    return { f, dest, dt, groups, plan, est, wx: null, created: new Date() };
+    const groups = L.buildLinks(f, dest, dt), plan = L.buildPlan(f, dest, dt);
+    return { f, dest, dt, groups, plan, wx: null, fl: null, created: new Date() };
   }
   const ICON = { plane: '✈️', bed: '🛏️', bus: '🚌', scooter: '🛵', ebike: '⚡', bike: '🚲', food: '🍝' };
   const DICON = { arr: '🛬', dep: '🛫', beach: '🏖️', scooter: '🛵', sight: '🏛️', food: '🍝' };
 
   function render() {
-    const { f, dest, dt, groups, plan, est } = ctx;
+    const { f, dest, dt, groups, plan } = ctx;
     const dates = `${L.dmy(dt.start)} – ${L.dmy(dt.end)}`;
     $('#summary').innerHTML = `<div><h3>${esc(L.nearbyNote(f))} → ${esc(dest.name)}${dest.iata ? ` (${dest.iata})` : ''}</h3>
       <p>${dt.mode === 'month' ? `${L.MONTHS[dt.m - 1]} ${dt.y}, ${dt.nights} nocy · przykładowe daty ${dates}` : `${dates} · ${dt.nights} nocy`} · ${f.adults} dor.${+f.children ? ` + ${f.children} dz.` : ''}${f.budget ? ` · budżet ${L.zl(f.budget)}` : ''}</p></div>
-      <div class="badge">Szacunek łącznie<b>${L.zl(est.low)} – ${L.zl(est.high)}</b>orientacyjnie</div>`;
+      <div class="badge" id="bestBadge">Najtańszy lot<b>szukam…</b>Ryanair</div>`;
     $('#groups').innerHTML = groups.map(g => {
       const main = g.items.filter(i => !i.perAirport), per = g.items.filter(i => i.perAirport);
       const item = i => `<a class="lnk${i.verified ? ' ver' : ''}" href="${esc(i.url)}" target="_blank" rel="noopener" data-group="${g.id}"><span><b>${esc(i.label)}</b><small>${esc(i.note || '')}${i.verified ? ' · sprawdzone 6.11.2026' : ''}</small></span><span class="go">Otwórz →</span></a>`;
@@ -94,17 +93,7 @@
         <div class="links">${main.map(item).join('')}</div>
         ${per.length ? `<details class="more"><summary>Linki dla każdego lotniska (${per.length})</summary><div class="links">${per.map(item).join('')}</div></details>` : ''}</div>`;
     }).join('');
-    const over = est.budget && est.low > est.budget, tight = est.budget && !over && est.high > est.budget;
-    $('#budgetCard').innerHTML = `<h3>💰 Budżet <span class="tag-est">szacunek</span></h3>
-      <p class="gnote">Orientacyjne widełki dla ${f.adults} dor.${+f.children ? ` + ${f.children} dz.` : ''}, ${dt.nights} nocy. To <strong>nie są ceny ofert</strong> – prawdziwe ceny zobaczysz po kliknięciu linków.</p>
-      <div class="brow">
-        <div class="bi"><b>${L.zl(est.flights[0])}–${L.zl(est.flights[1])}</b>Loty (tanie linie)</div>
-        <div class="bi"><b>${L.zl(est.accom[0])}–${L.zl(est.accom[1])}</b>Nocleg (${dt.nights} nocy)</div>
-        <div class="bi"><b>~${L.zl(est.food)}</b>Jedzenie (tanio)</div>
-        <div class="bi"><b>~${L.zl(est.local)}</b>Transport na miejscu</div>
-        ${est.att ? `<div class="bi"><b>~${L.zl(est.att)}</b>Bilety wstępu</div>` : ''}
-      </div>
-      ${est.budget ? `<div class="bstat ${over ? 'warn' : 'ok'}">${over ? `Budżet ${L.zl(est.budget)} może nie wystarczyć – spróbuj krótszego pobytu, hostelu lub tańszego miesiąca.` : tight ? `Budżet ${L.zl(est.budget)} wystarczy przy tańszych wyborach.` : `Budżet ${L.zl(est.budget)} powinien wystarczyć.`}</div>` : ''}`;
+    $('#budgetCard').hidden = true; $('#budgetCard').innerHTML = '';
     $('#weatherCard').innerHTML = `<h3>🌤️ Pogoda</h3><p class="gnote">Ładowanie danych pogodowych…</p>`;
     $('#planCard').innerHTML = `<h3>🗺️ Plan dzień po dniu</h3><p class="gnote">Propozycja ogólna – dopasuj do godzin lotów.${dest.known && dest.sights ? '' : ' Dla tego celu brak wbudowanych podpowiedzi – plan jest szablonem.'}</p>` +
       plan.map((d, i) => `<div class="day"><div class="day-head"><span class="ic">${DICON[d.kind] || '📍'}</span><span><b>Dzień ${i + 1} · ${d.dow} ${L.dm(d.date)} — ${esc(d.title)}</b><small>${esc(d.sub)}</small></span></div>
@@ -134,9 +123,32 @@
       ${legHtml('Powrót', r.back, r.inDep, r.inArr, r.to, r.from)}
       <a class="fl-book" href="${esc(r.url)}" target="_blank" rel="noopener">Rezerwuj w Ryanair →</a></div>`;
   }
+  function renderAfterFlights() {
+    const fl = ctx.fl, f = ctx.f, n = F.pax(f), bb = $('#bestBadge');
+    const ok = fl && !fl.loading && !fl.failed;
+    setReportEnabled(ok);
+    if (!bb) return;
+    if (!fl || fl.loading) { bb.innerHTML = 'Najtańszy lot<b>szukam…</b>Ryanair'; return; }
+    if (fl.failed) { bb.innerHTML = 'Najtańszy lot<b>błąd</b>spróbuj ponownie'; return; }
+    const best = fl.results.find(r => r.exact) || fl.results[0];
+    bb.innerHTML = best ? `Najtańszy lot<b>${F.zl2(best.total)}</b>${n > 1 ? n + ' os., ' : ''}tam i z powrotem` : 'Najtańszy lot<b>brak lotów</b>Ryanair';
+    const bc = $('#budgetCard');
+    if (+f.budget > 0 && best) {
+      const left = +f.budget - best.total;
+      bc.hidden = false;
+      bc.innerHTML = `<h3>💰 Budżet</h3><div class="brow"><div class="bi"><b>${L.zl(+f.budget)}</b>Twój budżet</div><div class="bi"><b>${F.zl2(best.total)}</b>Loty (prawdziwa cena)</div><div class="bi"><b>${left >= 0 ? L.zl(left) : '−' + L.zl(-left)}</b>Zostaje na nocleg, jedzenie i resztę</div></div>
+        <p class="gnote" style="margin-top:8px">Ceny noclegów sprawdź w linkach Booking.com poniżej – aplikacja nie zgaduje ich cen.</p>`;
+    } else { bc.hidden = true; bc.innerHTML = ''; }
+  }
+  function setReportEnabled(on, why) {
+    ['#genReport', '#pdf'].forEach(id => { const b = $(id); b.disabled = !on; b.title = on ? '' : (why || 'Najpierw wyszukaj loty'); });
+    const h = $('#barHint'); if (h) h.textContent = on ? '' : (why || 'Raport i PDF będą dostępne po wyszukaniu lotów.');
+  }
+  setReportEnabled(false);
   function renderFlights() {
     const el = $('#flightsCard'), c = ctx; el.hidden = false;
     const fl = c.fl;
+    renderAfterFlights();
     if (!fl || fl.loading) { el.innerHTML = `<div class="fl-head"><h3>✈️ Znalezione loty</h3></div><div class="fl-load"><span class="spin"></span><span id="flProg">${esc((fl && fl.progress) || 'Szukam lotów…')}</span></div>`; return; }
     if (fl.failed) { el.innerHTML = `<h3>✈️ Znalezione loty</h3><div class="fl-msg">Nie udało się połączyć z wyszukiwarką lotów (brak internetu?). Spróbuj ponownie albo użyj linków poniżej.</div><button class="btn ghost fl-more" id="flRetry">Spróbuj ponownie</button>`; $('#flRetry').onclick = () => run(); return; }
     const r = fl.results;
@@ -171,7 +183,8 @@
   async function run() {
     const f = read();
     if (!f.dest || !f.dest.trim()) { steps[0].open = true; $('#err').textContent = 'Wpisz cel podróży (np. Katania) albo wybierz z podpowiedzi.'; $('#err').hidden = false; $('#dest').focus(); return null; }
-    if (f.dateMode === 'exact' && (!f.depart || !f.ret || f.ret <= f.depart)) { $('#err').textContent = 'Sprawdź daty: powrót musi być po wylocie.'; $('#err').hidden = false; return null; }
+    if (f.dateMode === 'exact' && (!f.depart || !f.ret || f.ret <= f.depart)) { steps[1].open = true; $('#err').textContent = !f.depart || !f.ret ? 'Wybierz datę wylotu i powrotu (albo przełącz na „Miesiąc + długość”).' : 'Sprawdź daty: powrót musi być po wylocie.'; $('#err').hidden = false; return null; }
+    if (f.dateMode === 'month' && !f.month) { steps[1].open = true; $('#err').textContent = 'Wybierz miesiąc wyjazdu.'; $('#err').hidden = false; return null; }
     $('#err').hidden = true; save();
     ctx = compute(); render();
     const my = ctx;
@@ -183,14 +196,14 @@
   }
   form.addEventListener('submit', async e => { e.preventDefault(); if (await run()) $('#summary').scrollIntoView({ behavior: 'smooth', block: 'start' }); });
 
-  async function ready() { if (!ctx) await run(); if (!ctx) return null; await Promise.race([Promise.all([ctx.wxPromise, ctx.flPromise]), new Promise(r => setTimeout(r, 30000))]); return ctx; }
+  async function ready() { if (!ctx || !ctx.fl || ctx.fl.loading || ctx.fl.failed) return null; await Promise.race([Promise.all([ctx.wxPromise, ctx.flPromise]), new Promise(r => setTimeout(r, 30000))]); return ctx; }
 
   // --- raport HTML (A4) ---
   let lastHtml = '';
   $('#genReport').addEventListener('click', async () => {
     const b = $('#genReport'); b.classList.add('loading'); b.textContent = '⏳ Raport…';
-    try { const c = await ready(); if (!c) return; lastHtml = window.REPORT.html(c); const fr = $('#reportFrame'); fr.srcdoc = lastHtml; $('#reportView').hidden = false; document.body.style.overflow = 'hidden'; }
-    finally { b.classList.remove('loading'); b.textContent = '📄 Generuj raport'; }
+    try { const c = await ready(); if (!c) { alert('Najpierw wyszukaj loty (przycisk „Szukaj lotów”).'); return; } lastHtml = window.REPORT.html(c); const fr = $('#reportFrame'); fr.srcdoc = lastHtml; $('#reportView').hidden = false; document.body.style.overflow = 'hidden'; }
+    finally { b.classList.remove('loading'); b.textContent = '📄 Raport'; }
   });
   $('#closeReport').addEventListener('click', () => { $('#reportView').hidden = true; document.body.style.overflow = ''; });
   $('#printReport').addEventListener('click', () => { const w = $('#reportFrame').contentWindow; w.focus(); w.print(); });
@@ -199,13 +212,18 @@
   });
   async function doPdf(btn) {
     const old = btn.textContent; btn.textContent = '⏳ PDF…'; btn.classList.add('loading');
-    try { const c = await ready(); if (c) await window.PDFR.download(c); }
+    try { const c = await ready(); if (!c) { alert('Najpierw wyszukaj loty (przycisk „Szukaj lotów”).'); return; } await window.PDFR.download(c); }
     catch (e) { console.error(e); alert('Nie udało się utworzyć PDF: ' + e.message); }
     finally { btn.textContent = old; btn.classList.remove('loading'); }
   }
   $('#pdf').addEventListener('click', e => doPdf(e.currentTarget));
   $('#pdf2').addEventListener('click', e => doPdf(e.currentTarget));
 
-  if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => { });
+  if ('serviceWorker' in navigator && location.protocol === 'https:') {
+    const hadController = !!navigator.serviceWorker.controller;
+    navigator.serviceWorker.register('sw.js?v=' + encodeURIComponent(window.APP_BUILD || '1'), { updateViaCache: 'none' }).then(r => r.update()).catch(() => { });
+    navigator.serviceWorker.addEventListener('controllerchange', () => { if (hadController) { const n = $('#updBar'); if (n) n.hidden = false; } });
+  }
+  $('#updBtn') && $('#updBtn').addEventListener('click', () => location.reload());
   window.__planer = { run, ready, get ctx() { return ctx; } };
 })();

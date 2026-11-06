@@ -70,14 +70,17 @@ window.FL = (() => {
     const outMonths = days.map(d => d.slice(0, 7) + '-01');
     const inMonths = days.map(d => monthKey(addDays(new Date(d + 'T00:00:00'), nights)));
 
-    onProgress('Sprawdzam połączenia z lotnisk…');
+    onProgress(`Sprawdzam połączenia z: ${origins.join(', ')}…`);
     const rts = await pool(origins.map(o => () => routes(o)));
     const pairs = [];
     origins.forEach((o, i) => { const r = rts[i]; if (!r || r.error) { if (r && r.error) out.errors++; return; } destCodes.forEach(dc => { if (r.some(x => x.code === dc)) pairs.push([o, dc]); }); });
     out.searched = pairs.map(p => p.join('→'));
-    onProgress(pairs.length ? `Szukam cen (${pairs.length} ${pairs.length === 1 ? 'trasa' : 'trasy'})…` : 'Brak bezpośrednich tras – szukam alternatyw…');
+    const dayTxt = dt.mode === 'month' ? `${L.MONTHS[dt.m - 1]} ${dt.y}` : `${L.dm(addDays(dt.start, -3))}–${L.dm(addDays(dt.start, 3))}`;
+    onProgress(pairs.length ? `Trasy Ryanair: ${out.searched.join(', ')}. Sprawdzam ceny w dniach ${dayTxt}…` : `Ryanair nie lata z ${origins.length > 1 ? 'polskich lotnisk' : origins[0]} do ${destCodes.join('/')} – szukam alternatyw…`);
+    let done = 0;
     const res = await pool(pairs.map(([o, dc]) => async () => {
       const [om, im] = await Promise.all([perDay(o, dc, outMonths), perDay(dc, o, inMonths)]);
+      onProgress(`Sprawdzono ${++done}/${pairs.length}: ${o} ⇄ ${dc} (${dayTxt})`);
       return combos(f, o, dc, om, im, days, nights, exactOut);
     }));
     res.forEach(r => { if (Array.isArray(r)) out.results.push(...r); else out.errors++; });
@@ -92,7 +95,7 @@ window.FL = (() => {
       // alternatywy: inne lotniska w Polsce (tylko gdy szukano jednego)
       let others = [], ors = [];
       if (f.origin !== 'ALL') {
-        onProgress('Sprawdzam inne lotniska w Polsce…');
+        onProgress(`Brak lotów z ${f.origin} – sprawdzam inne lotniska w Polsce…`);
         others = AIRPORTS.map(a => a.code).filter(c => c !== f.origin);
         ors = await pool(others.map(o => () => routes(o)));
         const op = []; others.forEach((o, i) => { const r = ors[i]; if (Array.isArray(r)) destCodes.forEach(dc => { if (r.some(x => x.code === dc)) op.push([o, dc]); }); });

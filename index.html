@@ -9,8 +9,8 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="assets/logo.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="assets/icons/icon-180.png">
-<link rel="stylesheet" href="assets/fonts.css">
-<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="assets/fonts.css?v=1.2">
+<link rel="stylesheet" href="style.css?v=1.2">
 </head>
 <body>
 <header class="hero">
@@ -19,7 +19,7 @@
       <img src="assets/logo.svg" alt="" width="52" height="52">
       <span><strong>Andrzej Sowa</strong><small>Planer tanich wyjazdów</small></span>
     </a>
-    <p class="hero-lead">Wybierz skąd, dokąd i kiedy – dostaniesz gotowe linki do lotów, noclegów, transferów, skuterów i rowerów, plan dnia po dniu i raport PDF.</p>
+    <p class="hero-lead">Wybierz skąd, dokąd i kiedy, a aplikacja wyszuka prawdziwe loty Ryanair z cenami. Potem dostaniesz linki do noclegów i transportu, plan dnia po dniu i raport PDF.</p>
   </div>
   <svg class="hero-plane" viewBox="0 0 600 120" aria-hidden="true"><path d="M0 100 C150 20 330 10 520 50" stroke="#e0452b" stroke-width="2" stroke-dasharray="6 8" fill="none"/><path transform="translate(520 40) rotate(15)" d="M0 0l22-8c3-1 5 1 4 4l-8 22-4-2 3-13-10 5 1 5-2 2-3-5-5-3 2-2 5 1 5-10-13 3z" fill="#e0452b"/></svg>
   <svg class="hero-wave" viewBox="0 0 1440 80" preserveAspectRatio="none" aria-hidden="true"><path d="M0 40c120-20 240-20 360 0s240 20 360 0 240-20 360 0 240 20 360 0v40H0z" fill="#f4f6f9"/></svg>
@@ -107,7 +107,7 @@
     </details>
 
     <div class="actions">
-      <button type="submit" class="btn primary" id="go">✈️ Generuj linki i plan</button>
+      <button type="submit" class="btn primary" id="go">🔎 Szukaj lotów</button>
       <button type="button" class="btn ghost" id="reset">Wyczyść</button>
     </div>
     <p class="err" id="err" role="alert" hidden></p>
@@ -137,10 +137,12 @@
   <iframe id="reportFrame" title="Podgląd raportu"></iframe>
 </div>
 
+<div class="upd" id="updBar" hidden>Nowa wersja aplikacji jest gotowa. <button type="button" class="btn small primary" id="updBtn">Odśwież</button></div>
 <nav class="bar" aria-label="Akcje">
-  <button type="button" class="btn primary" id="barLinks">✈️ Generuj linki</button>
-  <button type="button" class="btn dark" id="genReport">📄 Generuj raport</button>
-  <button type="button" class="btn dark" id="pdf">⬇️ PDF</button>
+  <button type="button" class="btn primary" id="barLinks">🔎 Szukaj lotów</button>
+  <button type="button" class="btn dark" id="genReport" disabled>📄 Raport</button>
+  <button type="button" class="btn dark" id="pdf" disabled>⬇️ PDF</button>
+  <div class="bar-hint" id="barHint"></div>
 </nav>
 
 <footer class="foot">
@@ -148,12 +150,12 @@
   <div class="ver" id="ver"></div>
 </footer>
 
-<script src="js/version.js"></script>
-<script src="js/data.js"></script>
-<script src="js/logic.js"></script>
-<script src="js/flights.js"></script>
-<script src="js/report.js"></script>
-<script src="js/pdf.js"></script>
-<script src="js/app.js"></script>
+<script src="js/version.js?v=1.2"></script>
+<script src="js/data.js?v=1.2"></script>
+<script src="js/logic.js?v=1.2"></script>
+<script src="js/flights.js?v=1.2"></script>
+<script src="js/report.js?v=1.2"></script>
+<script src="js/pdf.js?v=1.2"></script>
+<script src="js/app.js?v=1.2"></script>
 </body>
 </html>

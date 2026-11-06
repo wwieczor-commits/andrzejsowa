@@ -18,14 +18,7 @@ window.PD = (() => {
     sights: [['Centrum Katanii', 'Piazza del Duomo · Fontana dell’Elefante · Via Etnea · targ La Pescheria'], ['Etna', 'Rifugio Sapienza · kolejka Funivia dell’Etna · kratery (cieplej się ubrać!)'], ['Taormina', 'Teatr Grecki · Corso Umberto · Isola Bella (autobus z Katanii)'], ['Syrakuzy i Ortigia', 'Ortigia · Park Archeologiczny Neapolis (pociąg/autobus)']],
     beaches: [['Riviera dei Ciclopi', 'Aci Castello · Aci Trezza (Faraglioni)'], ['La Playa di Catania', 'długa piaszczysta plaża na południe od centrum']],
     scooter: 'Riviera dei Ciclopi: Katania → Aci Castello → Aci Trezza → Acireale (wybrzeżem na północ)',
-    food: 'arancini, cannoli, granita z brioszką, street food przy La Pescheria',
-    rentals: [ // zweryfikowane 6.11.2026 w raporcie Wyjazd_Katania (strony firm)
-      { name: 'Rent in Catania', url: 'https://www.rentincatania.it/product-category/scooter/', note: 'Piazza dei Martiri 2 · centrum; strona: bez karty / bez kaucji' },
-      { name: 'Manganaro Rent', url: 'https://www.manganarorent.it/noleggio-scooter-a-catania/', note: 'lotnisko Fontanarossa; wymagana karta kredytowa Visa/MC + kaucja' },
-      { name: 'CM Motor', url: 'https://www.autonoleggiocmcarmotor.com/contatti', note: 'Via Acquicella 31; odbiór na lotnisku wg FAQ' },
-      { name: 'BikesBooking (agregator)', url: 'https://bikesbooking.com/it/scooter-and-motorcycle-rental-in-catania/', note: 'porównanie lokalnych firm' },
-      { name: 'Riderly (agregator)', url: 'https://riderly.com/rental-locations/italy/catania/', note: 'porównanie ofert, dowóz zależny od oferty' }
-    ] });
+    food: 'arancini, cannoli, granita z brioszką, street food przy La Pescheria' });
   add({ key: 'palermo', name: 'Palermo (Sycylia)', city: 'Palermo', q: 'Palermo', iata: 'PMO', country: 'Włochy', lat: 38.1157, lon: 13.3615, lvl: 2, cur: '€', airportName: 'Palermo Falcone-Borsellino' });
   add({ key: 'malaga', name: 'Malaga (Costa del Sol)', city: 'Malaga', q: 'Malaga', iata: 'AGP', country: 'Hiszpania', lat: 36.7213, lon: -4.4214, lvl: 2, cur: '€',
     airportName: 'Málaga-Costa del Sol', xfer: 'Pociąg podmiejski Cercanías C1 lotnisko → centrum (María Zambrano / Centro-Alameda) oraz autobus Línea A Express.',
