@@ -75,6 +75,7 @@ window.PDFR = (() => {
     return doc;
     }
     function hotelTable(s){
+      if(s.selected)para('Wybrany hotel do budżetu — bez rezerwacji',M,CW,9,'bold',ACCENT);
       para(HOTELS.summary(s.config),M,CW,8,'bold');
       para(HOTELS.filterText(s.config),M,CW,7,'normal',MUTED);
       para(`Ceny z dnia ${F.stamp(s.checkedAt)} (Europe/Warsaw). Punkt odległości: ${s.referenceName||'—'}; w linii prostej, nie dojazd. Centrum = przybliżony punkt miasta.`,M,CW,7,'normal',MUTED);
@@ -84,16 +85,17 @@ window.PDFR = (() => {
       para('Źródło: oficjalny publiczny MCP Trivago; maks. 25 zwróconych obiektów. Cena za noc i za pobyt są cytowane osobno. Podatki, opłaty, warunki anulowania i cenę dla całej grupy potwierdź na stronie oferty. Nic nie zarezerwowano ani nie opłacono.',M,CW,7,'normal',MUTED);
       h2('Porównywarki hoteli – linki');const pp=HOTELS.providers(s.config,s);table(['Serwis','Zakres linku',''],pp.map(p=>[p.name,p.note,'']),{columnStyles:{0:{cellWidth:38},2:{cellWidth:23}},...linkCol(2,pp.map(p=>p.url),()=> 'Otwórz →')});
     }
-    if(c.hotelOnly){header('Hotele · '+c.hotel.config.destination,'Dla Andrzeja Sowy · prawdziwe oferty, nie rezerwacja',APP_VERSION,'Hotele');hotelTable(c.hotel);return finish();}
+    if(c.hotelOnly){header('Hotele · '+c.hotel.config.destination,'Dla Andrzeja Sowy · prawdziwe oferty, nie rezerwacja',APP_VERSION,'Hotele');BUDGET.reportLines(c.selection).forEach((t,i)=>para(t,M,CW,i===0?10:8,i===0?'bold':'normal'));hotelTable(c.hotel);return finish();}
 
     // ===== STRONA 1 =====
     const one=f.tripType==='oneway';
     const when = dt.mode === 'month' ? `${L.MONTHS[dt.m - 1]} ${dt.y} · ${dt.nights} nocy` : one?`${L.dmy(dt.start)} · w jedną stronę · plan pobytu ${dt.nights} nocy`:`${L.dmy(dt.start)} – ${L.dmy(dt.end)}`;
-    header(`Wyjazd ${AP.isAll(f.origin) ? orig : AP.byCode(f.origin)?.city || orig} – ${dest.name}\n${when} – propozycja`, `Trasa: ${orig} → ${dest.name} · Dla: Andrzej Sowa · ${osob}${ch ? ` (${ad} dor. + ${ch} dz.)` : ''} · źródła: Google Flights, Ryanair, Wizz Air, Skyscanner, Booking.com · wygenerowano ${L.dmy(new Date())}`, bestFl ? `Najtańszy lot${persons > 1 ? ` (${persons} os.)` : ''}` : 'Loty Ryanair', bestFl ? F.zl2(bestFl.total) : 'brak');
+    header(`Wyjazd ${AP.isAll(f.origin) ? orig : AP.byCode(f.origin)?.city || orig} – ${dest.name}\n${when} – propozycja`, `Trasa: ${orig} → ${dest.name} · Dla: Andrzej Sowa · ${osob}${ch ? ` (${ad} dor. + ${ch} dz.)` : ''} · źródła: Google Flights, Ryanair, Wizz Air, Skyscanner, Booking.com · wygenerowano ${L.dmy(new Date())}`, bestFl ? `${c.selection?.flight?'Wybrany lot':'Najtańszy lot'}${persons > 1 ? ` (${persons} os.)` : ''}` : 'Loty Ryanair', bestFl ? F.zl2(bestFl.total) : 'brak');
+    BUDGET.reportLines(c.selection).forEach((t,i)=>para(t,M,CW,i===0?10:8,i===0?'bold':'normal'));
     h2('Podsumowanie');
-    const cards = [bestFl ? ['NAJTAŃSZY ZNALEZIONY LOT (PRAWDZIWA CENA)', F.zl2(bestFl.total), `Ryanair ${bestFl.from} ${one?'→':'↔'} ${bestFl.to} · ${F.fmtDate(bestFl.out)} ${F.hm(bestFl.outDep)}${bestFl.back?' – '+F.fmtDate(bestFl.back)+' '+F.hm(bestFl.inDep):' · w jedną stronę'} · ceny z dnia ${F.stamp(FLs.checkedAt)}`, true]
+    const cards = [bestFl ? [c.selection?.flight?'WYBRANY LOT DO BUDŻETU':'NAJTAŃSZY ZNALEZIONY LOT (PRAWDZIWA CENA)', F.zl2(bestFl.total), `Ryanair ${bestFl.from} ${one?'→':'↔'} ${bestFl.to} · ${F.fmtDate(bestFl.out)} ${F.hm(bestFl.outDep)}${bestFl.back?' – '+F.fmtDate(bestFl.back)+' '+F.hm(bestFl.inDep):' · w jedną stronę'} · ceny z dnia ${F.stamp(FLs.checkedAt)}`, true]
       : ['LOTY', 'Brak lotów', (FLs && FLs.message) || 'Wyszukiwanie nie zwróciło wyników.', true]];
-    if (+f.budget > 0) cards.push(['TWÓJ BUDŻET', zl(+f.budget), bestFl ? `Po opłaceniu lotu zostaje ${+f.budget - bestFl.total >= 0 ? F.zl2(+f.budget - bestFl.total) : 'brak (lot droższy niż budżet)'} na nocleg, jedzenie i transport.` : 'Brak lotów do porównania.', false]);
+    if (+f.budget > 0) cards.push(['TWÓJ BUDŻET', zl(+f.budget), bestFl ? `Po uwzględnieniu ${c.selection?'wybranych pozycji':'lotu'} zostaje ${+f.budget - (c.selection?.total??bestFl.total) >= 0 ? F.zl2(+f.budget - (c.selection?.total??bestFl.total)) : 'brak (lot droższy niż budżet)'} na pozostałe koszty.` : 'Brak lotów do porównania.', false]);
     const cw = (CW - (cards.length - 1) * 3) / cards.length;
     cards.forEach(([l, v, b, best], i) => {
       const x = M + i * (cw + 3);
@@ -109,11 +111,12 @@ window.PDFR = (() => {
     const cap = s => s.replace(/^./, x => x.toUpperCase());
     const tl = [
       [SEA, `${cap(L.DOW_S[dt.start.getDay()])} ${L.dm(dt.start)}, ok. 2–2,5 h przed wylotem`, `Dojazd na lotnisko ${AP.isAll(f.origin) ? orig : orig}`],
-      bestFl ? [ACCENT, `${F.fmtDate(bestFl.out)}, ${F.hm(bestFl.outDep)}`, `Wylot ${bestFl.from} → ${bestFl.to}, Ryanair, przylot ${F.hm(bestFl.outArr)} (najtańsza znaleziona opcja)`] : [ACCENT, `${cap(L.DOW_S[dt.start.getDay()])} ${L.dmy(dt.start)}, godzina wg rezerwacji`, `Wylot ${AP.isAll(f.origin) ? AP.country(AP.countryOf(f.origin))?.name : f.origin} → ${dest.city}${dest.iata ? ' (' + dest.iata + ')' : ''}`],
-      [SEA, `${L.dm(dt.start)}, po przylocie`, (dest.xfer || 'Transfer z lotniska – najtaniej komunikacją miejską.').split(';')[0]],
+      bestFl ? [ACCENT, `${F.fmtDate(bestFl.out)}, ${F.hm(bestFl.outDep)}`, `Wylot ${bestFl.from} → ${bestFl.to}, Ryanair, przylot ${F.hm(bestFl.outArr)} (${c.selection?.flight?'wybrany do budżetu':'najtańsza znaleziona opcja'})`] : [ACCENT, `${cap(L.DOW_S[dt.start.getDay()])} ${L.dmy(dt.start)}, godzina wg rezerwacji`, `Wylot ${AP.isAll(f.origin) ? AP.country(AP.countryOf(f.origin))?.name : f.origin} → ${dest.city}${dest.iata ? ' (' + dest.iata + ')' : ''}`],
+      [SEA, `${L.dm(bestFl?new Date(bestFl.outArr.slice(0,10)+'T00:00:00'):dt.start)}, po przylocie`, (dest.xfer || 'Transfer z lotniska – najtaniej komunikacją miejską.').split(';')[0]],
       [NAVY, `${L.dm(dt.start)}–${L.dmy(dt.end)}`, `${dt.nights} nocy · ${ACC[f.accType] || 'dowolny'}${f.breakfast === 'tak' ? ' ze śniadaniem' : ''} · ${DIST[f.distance]}`],
       bestFl ? [ACCENT, `${F.fmtDate(bestFl.back)}, ${F.hm(bestFl.inDep)}`, `Wylot ${bestFl.to} → ${bestFl.from}, Ryanair, przylot ${F.hm(bestFl.inArr)}`] : [ACCENT, `${cap(L.DOW_S[dt.end.getDay()])} ${L.dmy(dt.end)}, godzina wg rezerwacji`, `Wylot ${dest.iata || dest.city} → ${AP.isAll(f.origin) ? AP.country(AP.countryOf(f.origin))?.name : f.origin}, powrót`]
     ];
+    if(c.selection?.hotel){const h=c.selection.hotel;tl[3]=[NAVY,h.config.checkin+'–'+h.config.checkout,h.item.name+' · '+h.nights+' nocy · '+F.zl2(h.amount)+' za pobyt · wybrany do budżetu, bez rezerwacji'];}
     if(one)tl.pop();
     const y0 = y; color([208, 215, 226], 'setDrawColor'); doc.setLineWidth(0.6);
     tl.forEach(([col, w, t]) => {
@@ -135,7 +138,7 @@ window.PDFR = (() => {
       const alt = !FLs.exactFound ? [...FLs.alternatives.otherAirports.slice(0, 3), ...FLs.alternatives.nearbyDest.slice(0, 3)] : [];
       const rr = [...FLs.results.slice(0, 6), ...alt];
       if (rr.length) table(['Kierunek', 'Data', 'Godziny', 'Przewoźnik', `Cena${persons > 1 ? ` (${persons} os.)` : ''}`, ''],
-        rr.map(r => [`${r.from} ${one?'→':'↔'} ${r.to}${r.exact ? '\nTwoje daty' : ''}${FLs.results.includes(r) ? '' : r.km ? `\nalternatywa: ${r.toName} ${r.km} km` : '\nalternatywa: inne lotnisko'}`, `${F.fmtDate(r.out)}${r.back?'\n'+F.fmtDate(r.back):''}`, `${F.hm(r.outDep)}–${F.hm(r.outArr)}${r.back?'\n'+F.hm(r.inDep)+'–'+F.hm(r.inArr):''}`, 'Ryanair\nbez przesiadek', `${F.zl2(r.total)}${persons > 1 ? `\n${F.zl2(r.perPerson)}/os.` : ''}`, '']),
+        rr.map(r => [`${c.selection?.flight?'Wybrany · ':''}${r.from} ${one?'→':'↔'} ${r.to}${r.exact ? '\nTwoje daty' : ''}${FLs.results.includes(r) ? '' : r.km ? `\nalternatywa: ${r.toName} ${r.km} km` : '\nalternatywa: inne lotnisko'}`, `${F.fmtDate(r.out)}${r.back?'\n'+F.fmtDate(r.back):''}`, `${F.hm(r.outDep)}–${F.hm(r.outArr)}${r.back?'\n'+F.hm(r.inDep)+'–'+F.hm(r.inArr):''}`, 'Ryanair\nbez przesiadek', `${F.zl2(r.total)}${persons > 1 ? `\n${F.zl2(r.perPerson)}/os.` : ''}`, '']),
         { columnStyles: { 0: { cellWidth: 44, textColor: ACCENT, fontStyle: 'bold' }, 4: { fontStyle: 'bold' }, 5: { cellWidth: 22 } }, ...merge(linkCol(5, rr.map(r => reg(`Ryanair ${r.from}→${r.to} ${r.out}/${r.back}`, r.url)), () => 'Rezerwuj →'), nameLinks(0, rr.map(r => r.url))) });
       para(`Prawdziwe ceny z publicznego API Ryanair (najtańszy lot danego dnia), pobrane ${F.stamp(FLs.checkedAt)}. Cena łączna = taryfa bazowa × ${persons} dorosłych/dzieci; niemowlęta: ${+f.infants||0}, ich dopłaty nie są uwzględnione. Cenę grupową potwierdza Ryanair; zwykle bez bagażu rejestrowanego. Wizz Air i inne linie – linki poniżej.`, M, CW, 6.8, 'normal', MUTED);
     }
@@ -232,9 +235,10 @@ window.PDFR = (() => {
     prac.forEach(p => { font('normal', 7.6, [51, 65, 85]); const ls = doc.splitTextToSize(p, CW - 5); need(ls.length * 3.5 + 1); color(ACCENT, 'setFillColor'); doc.circle(M + 1.2, y + 1.6, 0.7, 'F'); text(ls, M + 4, y + 2.6, { lineHeightFactor: 1.3 }); y += ls.length * 3.5 + 1.2; });
 
     h2('Budżet');
+    BUDGET.reportLines(c.selection).slice(1).forEach(t=>para(t,M,CW,8));
     [+f.budget > 0 ? `Twój budżet: ${zl(+f.budget)}` : 'Nie podano budżetu.',
      bestFl ? `Loty (prawdziwa cena z ${F.stamp(FLs.checkedAt)}): ${F.zl2(bestFl.total)}` : 'Loty: brak lotów Ryanair dla tych danych.',
-     ...(+f.budget > 0 && bestFl ? [`Zostaje na resztę: ${F.zl2(+f.budget - bestFl.total)}`] : []),
+     ...(+f.budget > 0 && bestFl ? [`Zostaje na resztę: ${F.zl2(+f.budget - (c.selection?.total??bestFl.total))}`] : []),
      'Nocleg: ceny w linkach Booking.com (strona 1).'].forEach(t => para('• ' + t, M, CW, 7.6, 'normal', [51, 65, 85]));
 
     h2('Linki (pełne URL – klikalne)');

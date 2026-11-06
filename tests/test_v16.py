@@ -24,7 +24,7 @@ with sync_playwright() as w:
   def request(r):
    if r.url=='https://mcp.trivago.com/mcp' and r.method=='POST':mcp.append(r.post_data_json)
   p.on('request',request)
-  p.goto(U,wait_until='networkidle');ok('v1.7' in p.inner_text('#ver'),'footer v1.7');ok(p.locator('#hotelForm').count()==1 and not p.is_visible('#hotelResults') and p.is_disabled('#genReport'),'hotel search visible, no auto prices or report')
+  p.goto(U,wait_until='networkidle');ok('v1.8' in p.inner_text('#ver'),'footer v1.8');ok(p.locator('#hotelForm').count()==1 and not p.is_visible('#hotelResults') and p.is_disabled('#genReport'),'hotel search visible, no auto prices or report')
   p.locator('#hotelSection').scroll_into_view_if_needed();snap(p,name,'hotel-search-empty');p.click('#hotelGo');ok(p.locator('#hotelForm .invalid').count()>=5 and not mcp,'all missing hotel fields red, no API request');p.wait_for_function('document.activeElement.id==="hotelDestination"',timeout=2000);ok(True,'focus first missing hotel field')
   p.fill('#hotelDestination','Katania');p.wait_for_selector('#hotelSuggestions [data-place]',timeout=15000);ok('Włochy' in p.inner_text('#hotelSuggestions') and 'Kongo' in p.inner_text('#hotelSuggestions'),'real geocoding suggestions distinguish city and country');snap(p,name,'hotel-typeahead')
   p.locator('#hotelDestination').press('ArrowDown');p.locator('#hotelDestination').press('Enter');ok('Włochy' in p.inner_text('#hotelPoint') and not p.locator('#hotelDestination').evaluate('(e)=>e.classList.contains("invalid")'),'keyboard selection and red clears immediately')

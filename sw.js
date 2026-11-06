@@ -1,6 +1,6 @@
 /* Andrzej Sowa · Planer – service worker (© Wojciech Wieczorek).
    Zawsze najpierw sieć (bez pamięci HTTP), pamięć podręczna tylko offline. Stare wersje są kasowane. */
-const VERSION = 'v8-1.7';
+const VERSION = 'v9-1.8';
 const CACHE = `sowa-planer-${VERSION}`;
 self.addEventListener('install', e => { self.skipWaiting(); });
 self.addEventListener('activate', e => e.waitUntil((async () => {

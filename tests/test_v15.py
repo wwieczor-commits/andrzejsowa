@@ -24,7 +24,7 @@ with sync_playwright() as w:
  for name,opt in [('iphone',w.devices['iPhone 13']),('pixel',w.devices['Pixel 7']),('desktop',{'viewport':{'width':1280,'height':900}})]:
   print('==',name,flush=True);c=b.new_context(**opt,locale='pl-PL',timezone_id='Europe/Warsaw',accept_downloads=True);p=c.new_page();errs=[];requests=[]
   p.on('pageerror',lambda e:errs.append(str(e)));p.on('request',lambda r:requests.append(r.url))
-  p.goto(U,wait_until='networkidle');ok('v1.7' in p.inner_text('#ver'),'footer v1.7')
+  p.goto(U,wait_until='networkidle');ok('v1.8' in p.inner_text('#ver'),'footer v1.8')
   ok(not p.is_visible('#out') and p.is_disabled('#genReport'),'no auto report or results')
   ok(p.locator('.search-panel .search-field').count()==5,'compact origin/destination/date/pax buttons')
   snap(p,name,'search-panel');p.click('#go');p.wait_for_timeout(100)

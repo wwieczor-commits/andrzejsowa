@@ -1,4 +1,4 @@
-/* Planer podróży v1.7 – najpierw prawdziwe loty, potem reszta wyjazdu. © Wojciech Wieczorek */
+/* Planer podróży v1.8 – najpierw prawdziwe loty, potem reszta wyjazdu. © Wojciech Wieczorek */
 'use strict';
 (()=>{
   const L=window.PL,F=window.FL,$=s=>document.querySelector(s),esc=SEARCHUI.esc;
@@ -14,13 +14,14 @@
   function syncMode(){const m=read().dateMode;$('.mode-exact').hidden=m!=='exact';$('.mode-month').hidden=m!=='month';$('.ages').hidden=!(+read().children>0);}
   syncMode();
   const flightFields=['origin','dest','originCountry','destCountry','tripType','dateMode','depart','ret','month','nights','adults','children','childAges','infants','directOnly','cabin'];
-  function changed(e){syncMode();save();if(ctx&&e.target.name){if(e.target.name==='nights'&&read().tripType==='oneway'){ctx.f={...ctx.f,...read()};ctx.dt=L.computeDates(ctx.f);ctx.groups=ctx.dest.anywhere?[]:L.buildLinks(ctx.f,ctx.dest,ctx.dt);ctx.plan=ctx.dest.anywhere?[]:L.buildPlan(ctx.f,ctx.dest,ctx.dt);renderTrip();loadWeather(ctx);}else if(flightFields.includes(e.target.name)){ctx=null;$('#out').hidden=true;setReportEnabled(false,'Zmieniłeś wyszukiwanie – kliknij Szukaj.');busy(false);}else {ctx.f={...ctx.f,...read()};ctx.groups=L.buildLinks(ctx.f,ctx.dest,ctx.dt);ctx.plan=L.buildPlan(ctx.f,ctx.dest,ctx.dt);renderTrip();}}if(validationAttempted)validate(read());}
-  form.addEventListener('input',changed);form.addEventListener('change',e=>{syncMode();save();if(validationAttempted)validate(read());});
-  $('#reset').onclick=()=>{localStorage.removeItem(KEY);location.reload();};$('#barLinks').onclick=()=>{updateSearchBar();if($('#barLinks').dataset.mode==='hotels')$('#hotelForm').requestSubmit();else form.requestSubmit();};
+  function changed(e){if(e.target.matches('[data-flight-budget]'))return;syncMode();save();BUDGET.flightChanged(read());if(ctx&&e.target.name){if(e.target.name==='nights'&&read().tripType==='oneway'){ctx.f={...ctx.f,...read()};ctx.dt=L.computeDates(ctx.f);ctx.groups=ctx.dest.anywhere?[]:L.buildLinks(ctx.f,ctx.dest,ctx.dt);ctx.plan=ctx.dest.anywhere?[]:L.buildPlan(ctx.f,ctx.dest,ctx.dt);renderTrip();loadWeather(ctx);}else if(flightFields.includes(e.target.name)){ctx=null;$('#out').hidden=true;$('#restOptions').hidden=!BUDGET.any;setReportEnabled(false,'Zmieniłeś wyszukiwanie – kliknij Szukaj.');busy(false);}else {ctx.f={...ctx.f,...read()};ctx.groups=L.buildLinks(ctx.f,ctx.dest,ctx.dt);ctx.plan=L.buildPlan(ctx.f,ctx.dest,ctx.dt);renderTrip();}}if(validationAttempted)validate(read());}
+  form.addEventListener('input',changed);$('#restOptions').addEventListener('input',changed);$('#restOptions').addEventListener('change',()=>{save();BUDGET.render();});form.addEventListener('change',e=>{syncMode();save();if(validationAttempted)validate(read());});
+  $('#reset').onclick=()=>{localStorage.removeItem(KEY);localStorage.removeItem('sowa.planer.budget.v1');location.reload();};$('#barLinks').onclick=()=>{updateSearchBar();if($('#barLinks').dataset.mode==='hotels')$('#hotelForm').requestSubmit();else form.requestSubmit();};
   function compute(){const f=read(),dest=L.resolveDest(f.dest),dt=L.computeDates(f);return {f,dest,dt,groups:dest.anywhere?[]:L.buildLinks(f,dest,dt),plan:dest.anywhere?[]:L.buildPlan(f,dest,dt),wx:null,fl:null,created:new Date()};}
   function summary(){const {f,dest,dt}=ctx;$('#summary').innerHTML=`<div><h3>${esc(AP.label(f.origin))} ${f.tripType==='oneway'?'→':'↔'} ${esc(dest.name)}</h3><p>${dt.mode==='month'?`${L.MONTHS[dt.m-1]} ${dt.y}${f.tripType==='oneway'?'':' · '+dt.nights+' nocy'}`:L.dmy(dt.start)+(f.tripType==='oneway'?' · w jedną stronę':' – '+L.dmy(dt.end))} · ${+f.adults+ +f.children+ +f.infants} os.</p></div><div class="badge" id="bestBadge">Najtańszy lot<b>szukam…</b>Ryanair</div>`;$('#out').hidden=false;}
   function renderTrip() {
-    const { f, dest, dt, groups, plan } = ctx;
+    $('#restOptions').hidden=false;
+    const { f, dest, dt, groups, plan } = BUDGET.flight?BUDGET.context(ctx):ctx;
     if(dest.anywhere){$('#planTargetNote').textContent='Wybierz „Zaplanuj tę ofertę” przy konkretnym locie, aby stworzyć plan i raport.';['#groups','#weatherCard','#planCard'].forEach(id=>$(id).innerHTML='');return;}
     $('#planTargetNote').textContent=(f.tripType==='oneway'?'Lot w jedną stronę. Plan pobytu '+dt.nights+' nocy jest osobny, bez lotu powrotnego. ':'')+'Plan i linki dotyczą: '+dest.name+'.';
     $('#groups').innerHTML = groups.filter(g=>g.id!=='loty').map(g => {
@@ -36,10 +37,10 @@
       plan.map((d, i) => `<div class="day"><div class="day-head"><span class="ic">${DICON[d.kind] || '📍'}</span><span><b>Dzień ${i + 1} · ${d.dow} ${L.dm(d.date)} — ${esc(d.title)}</b><small>${esc(d.sub)}</small></span></div>
         <div class="slots"><div class="slot"><i>Rano</i>${esc(d.am)}</div><div class="slot pm"><i>Popołudnie</i>${esc(d.pm)}</div><div class="slot eve"><i>Wieczór</i>${esc(d.eve)}</div></div>
         <div class="tip"><strong>Tip:</strong> ${esc(d.tip)}</div></div>`).join('');
-    $('#out').hidden = false;
+    $('#out').hidden = false;BUDGET.render();
   }
   function renderWeather() {
-    const w = ctx.wx;
+    const w = BUDGET.flight?BUDGET.context(ctx).wx:ctx.wx;
     if (!w || !w.days || !w.days.some(d => d.tmax != null)) { $('#weatherCard').innerHTML = `<h3>🌤️ Pogoda</h3><p class="gnote">${ctx.dest.all ? 'Wybrano cały kraj – prognozę sprawdź po wyborze konkretnego miasta.' : 'Brak danych pogodowych (brak internetu lub nieznany cel).'}</p>`; return; }
     $('#weatherCard').innerHTML = `<h3>🌤️ Pogoda ${w.kind === 'forecast' ? '<span class="tag-est">prognoza</span>' : '<span class="tag-est">typowa / szacunek</span>'}</h3>
       <div class="wx-strip">${w.days.map(d => `<div class="wx-day"><div class="wd">${L.dm(d.date)}</div><div class="wt">${d.tmax != null ? Math.round(d.tmax) + '°/' + Math.round(d.tmin) + '°' : '–'}</div><div class="ws">${d.rain != null ? (w.kind === 'forecast' ? 'deszcz ' : 'dni z deszczem ') + d.rain + '%' : ''}</div></div>`).join('')}</div>
@@ -49,7 +50,7 @@
 
   function updateSearchBar(){const h=$('#hotelSection'),hotel=h&&h.getBoundingClientRect().top<innerHeight*.55&&!!$('#hotelForm');$('#barLinks').dataset.mode=hotel?'hotels':'flights';$('#barLinks').textContent=hotel?'🔎 Hotele':'🔎 Szukaj';$('#barLinks').disabled=hotel?!!$('#hotelGo')?.disabled:$('#go').disabled;}
   function busy(on){$('#go').disabled=on;$('#go').textContent=on?'Szukam lotów…':'🔎 Szukaj';updateSearchBar();}
-  function setReportEnabled(on,why){on=!!on||!!window.HOTELS?.reportReady();if($('#go').disabled||$('#hotelGo')?.disabled){on=false;why='Trwa wyszukiwanie lotów lub hoteli…';}['#genReport','#pdf'].forEach(id=>{$(id).disabled=!on;$(id).title=on?'':why||'Najpierw wyszukaj loty';});$('#barHint').textContent=on?'':why||'Raport i PDF po wyszukaniu lotów lub hoteli.';}
+  function setReportEnabled(on,why){on=!!on||!!window.HOTELS?.reportReady()||!!window.BUDGET?.any;if($('#go').disabled||$('#hotelGo')?.disabled){on=false;why='Trwa wyszukiwanie lotów lub hoteli…';}['#genReport','#pdf'].forEach(id=>{$(id).disabled=!on;$(id).title=on?'':why||'Najpierw wyszukaj loty';});$('#barHint').textContent=on?'':why||'Raport i PDF po wyszukaniu lotów lub hoteli.';}
   setReportEnabled(false);
   function externalPanel(c){const selected=OTHERFLIGHTS.forContext(c);if(!selected)return '<div class="external-flights"><h3>Sprawdź też inne linie</h3><p>Wybierz konkretny kierunek z wyników, aby dostać linki Wizz Air, Skyscanner i Google Flights.</p></div>';
     const origins=AP.members(c.f.origin),destinations=c.f.dest==='ANY'?[...new Map((c.fl?.results||[]).map(r=>[r.to,AP.byCode(r.to)])).values()].filter(Boolean):AP.members(c.f.dest);
@@ -57,15 +58,15 @@
     return `<section class="external-flights"><h3>Sprawdź też</h3><p class="external-note"><b>Linki, nie pobrane oferty.</b> Wizz Air i Skyscanner: ich cen nie pobieramy. Google Flights porówna inne linie.</p>${origins.length>1||destinations.length>1?`<div class="external-pair"><label>Skąd<select id="extOrigin">${opts(origins,selected.from)}</select></label><label>Dokąd<select id="extDest">${opts(destinations,selected.to)}</select></label></div><p class="external-note">Linki dotyczą wskazanej pary lotnisk, nie całego kraju.</p>`:`<p class="external-route">${selected.from} → ${selected.to}</p>`}<p id="extDates" class="external-note">${esc(selected.note)}</p><div class="external-links"><a id="extWizz" class="external-wizz" target="_blank" rel="noopener" href="${esc(selected.wizz)}"><b>Wizz Air ↗</b><small>Sprawdź ceny u przewoźnika</small></a><a id="extSky" class="external-sky" target="_blank" rel="noopener" href="${esc(selected.sky)}"><b>Skyscanner ↗</b><small>Porównaj linie · PLN</small></a><a id="extGoogle" class="external-google" target="_blank" rel="noopener" href="${esc(OTHERFLIGHTS.google(c.f,c.dt,selected.from,selected.to))}"><b>Google Flights ↗</b><small>Inne linie · ceny w PLN</small></a></div><p class="external-note">Brak lotów Ryanair nie oznacza braku lotów innych linii. Serwis może wymagać cookies lub potwierdzenia, że jesteś człowiekiem.</p></section>`;
   }
   function bindExternal(c){const change=()=>{const first=OTHERFLIGHTS.forContext(c),from=$('#extOrigin')?.value||first.from,to=$('#extDest')?.value||first.to,x=OTHERFLIGHTS.links(c.f,c.dt,from,to);$('#extWizz').href=x.wizz;$('#extSky').href=x.sky;$('#extGoogle').href=OTHERFLIGHTS.google(c.f,c.dt,from,to);};$('#extOrigin')?.addEventListener('change',change);$('#extDest')?.addEventListener('change',change);}
-  function renderFlights(){const c=ctx,fl=c.fl,el=$('#flightsCard');el.hidden=false;
+  function renderFlights(){const c=ctx,fl=c.fl;if(!fl.loading)BUDGET.refreshFlights(c);const el=$('#flightsCard');el.hidden=false;
     if(fl.loading){el.innerHTML=`<div class="card"><h2>Szukam Twojego lotu</h2><div class="fl-load"><span class="spin"></span><span id="flProg" role="status">${esc(fl.progress)}</span></div><p class="src">Prawdziwe dane Ryanair. Duża liczba lotnisk może wymagać więcej czasu.</p></div>`;return;}
     setReportEnabled(!fl.failed&&!c.dest.anywhere,c.dest.anywhere?'Wybierz „Zaplanuj tę ofertę”, aby odblokować raport.':undefined);
     const best=fl.results?.[0];$('#bestBadge').innerHTML=best?`od <b>${F.zl2(best.perPerson)}</b>za osobę${c.f.tripType==='oneway'?' · jeden lot':' · 2 loty'}`:fl.failed?'Błąd odczytu<b>spróbuj ponownie</b>':'Brak taryf<b>sprawdź inne daty</b>';
     el.innerHTML=(fl.failed?'<div class="fl-msg">Nie udało się połączyć z Ryanair. Nie oznacza to braku lotów. Spróbuj ponownie.</div>':SEARCHUI.resultHTML(c))+externalPanel(c);bindExternal(c);if(!fl.failed)SEARCHUI.bindResults(c,renderFlights,selectTrip);
     renderTrip();
-    if(+c.f.budget>0&&best){$('#budgetCard').hidden=false;$('#budgetCard').innerHTML=`<h3>Budżet wyjazdu</h3><p>Twój budżet: ${L.zl(c.f.budget)} · loty ${F.zl2(best.total)}${+c.f.infants?' + dopłata za niemowlę':''}. Pozostałe ceny sprawdź w linkach.</p>`;}
+    if(+c.f.budget>0&&best&&!BUDGET.any){$('#budgetCard').hidden=false;$('#budgetCard').innerHTML=`<h3>Budżet wyjazdu</h3><p>Twój budżet: ${L.zl(c.f.budget)} · loty ${F.zl2(best.total)}${+c.f.infants?' + dopłata za niemowlę':''}. Pozostałe ceny sprawdź w linkach.</p>`;}
   }
-  async function selectTrip(r){const old=ctx;fromPicker.choose(r.from,false);toPicker.choose(r.to,false);$('[name=dateMode][value=exact]').checked=true;$('#depart').value=r.out;$('#ret').value=r.back||'';save();syncMode();SEARCHUI.sync();ctx=compute();ctx.fl={...old.fl,results:[{...r,exact:true}],exactFound:true,message:'Wybrana oferta z prawdziwego wyszukiwania.',subset:false,alternatives:{otherAirports:[],nearbyDest:[]}};summary();SEARCHUI.resetResults();renderFlights();HOTELS.prefill(ctx);loadWeather(ctx);$('#restOptions').open=true;$('#restOptions').scrollIntoView({behavior:'smooth'});}
+  async function selectTrip(r){const old=ctx;fromPicker.choose(r.from,false);toPicker.choose(r.to,false);$('[name=dateMode][value=exact]').checked=true;$('#depart').value=r.out;$('#ret').value=r.back||'';save();syncMode();SEARCHUI.sync();ctx=compute();ctx.fl={...old.fl,results:[{...r,exact:true}],exactFound:true,message:'Wybrana oferta z prawdziwego wyszukiwania.',subset:false,alternatives:{otherAirports:[],nearbyDest:[]}};summary();SEARCHUI.resetResults();renderFlights();BUDGET.chooseFlight(ctx,ctx.fl.results[0]);HOTELS.prefill(ctx);loadWeather(ctx);$('#restOptions').open=true;$('#restOptions').scrollIntoView({behavior:'smooth'});}
   function validate(f,focus=false){const errors=[],err=(s,msg)=>errors.push({el:$(s),msg});
     if(!AP.members(f.origin).length)err(AP.country(f.originCountry)?'#fromAirportSearch':'#fromCountrySearch','Wybierz kraj i lotnisko wylotu lub wszystkie lotniska w kraju.');
     if(f.dest!=='ANY'&&!AP.members(f.dest).length)err(AP.country(f.destCountry)?'#toAirportSearch':'#toCountrySearch','Wybierz cel lub Dowolne miejsce.');
@@ -87,7 +88,7 @@
     my.flPromise=F.search(my,m=>{if(ctx===my&&my.fl.loading){my.fl.progress=m;if($('#flProg'))$('#flProg').textContent=m;}}).then(r=>my.fl=r).catch(()=>my.fl={failed:true}).finally(()=>{if(ctx===my){busy(false);renderFlights();HOTELS.prefill(my);}});loadWeather(my);return my;
   }
   form.onsubmit=async e=>{e.preventDefault();if(await run())$('#summary').scrollIntoView({behavior:'smooth',block:'start'});};
-  async function ready(){if(!ctx||!ctx.fl||ctx.fl.loading||ctx.fl.failed||ctx.dest.anywhere)return HOTELS.reportReady()?{hotelOnly:true,hotel:HOTELS.snapshot(),f:{},dest:{},dt:{},groups:[],plan:[]}:null;await Promise.race([Promise.all([ctx.wxPromise,ctx.flPromise]),new Promise(r=>setTimeout(r,30000))]);return {...ctx,hotel:HOTELS.snapshot()};}
+  async function ready(){if(BUDGET.any)return BUDGET.context(ctx?{...ctx,hotel:HOTELS.snapshot()}:null);if(!ctx||!ctx.fl||ctx.fl.loading||ctx.fl.failed||ctx.dest.anywhere)return HOTELS.reportReady()?{hotelOnly:true,hotel:HOTELS.snapshot(),f:{},dest:{},dt:{},groups:[],plan:[]}:null;await Promise.race([Promise.all([ctx.wxPromise,ctx.flPromise]),new Promise(r=>setTimeout(r,30000))]);return {...ctx,hotel:HOTELS.snapshot()};}
   // --- raport HTML (A4) ---
   let lastHtml = '', lastReportCtx = null;
   $('#genReport').addEventListener('click', async () => {
@@ -118,5 +119,6 @@
   window.__planer = { run, ready, fromPicker, toPicker, read, get ctx() { return ctx; } };
   SEARCHUI.init({read,fromPicker,toPicker});
   HOTELS.init(()=>{setReportEnabled(ctx&&ctx.fl&&!ctx.fl.loading&&!ctx.fl.failed&&!ctx.dest.anywhere);updateSearchBar();});
+  BUDGET.init({planned:()=>{if(ctx){renderTrip();renderWeather();}},changed:()=>setReportEnabled(ctx&&ctx.fl&&!ctx.fl.loading&&!ctx.fl.failed&&!ctx.dest.anywhere),hotels:()=>$('#hotelSection').scrollIntoView({behavior:'smooth',block:'start'}),next:()=>{const rest=$('#restOptions');rest.hidden=false;rest.open=true;rest.querySelector('[data-step="5"]').open=true;if(!ctx){$('#planTargetNote').textContent='Dalsze opcje dla wybranego noclegu. Kwoty własne poniżej dotyczą całej grupy i całego pobytu.';['#groups','#weatherCard','#planCard','#budgetCard'].forEach(id=>$(id).innerHTML='');}rest.scrollIntoView({behavior:'smooth',block:'start'});}});
   let barTick=false;addEventListener('scroll',()=>{if(!barTick){barTick=true;requestAnimationFrame(()=>{barTick=false;updateSearchBar();});}},{passive:true});updateSearchBar();
 })();

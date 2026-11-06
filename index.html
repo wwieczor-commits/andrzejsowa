@@ -9,8 +9,8 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="assets/logo.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="assets/icons/icon-180.png">
-<link rel="stylesheet" href="assets/fonts.css?v=1.7">
-<link rel="stylesheet" href="style.css?v=1.7">
+<link rel="stylesheet" href="assets/fonts.css?v=1.8">
+<link rel="stylesheet" href="style.css?v=1.8">
 </head>
 <body>
 <header class="hero">
@@ -71,16 +71,21 @@
   <section id="out" hidden>
     <div class="card summary" id="summary"></div><div id="flightsCard" hidden></div>
     <div class="note-safe">🔒 <strong>Nic nie rezerwujemy i nic nie płacimy.</strong> Wybierasz i rezerwujesz sam na stronie przewoźnika. To nie jest pełna wyszukiwarka wszystkich linii.</div>
-    <details class="card rest-options" id="restOptions"><summary><span>🧳 Zaplanuj resztę wyjazdu<small>Nocleg, atrakcje, transport i budżet</small></span><span>＋</span></summary><div class="rest-body">
+
+  </section>
+</form>
+<section id="hotelSection" aria-label="Wyszukiwarka hoteli"></section>
+    <details class="card rest-options" id="restOptions" hidden><summary><span>🧳 Zaplanuj resztę wyjazdu<small>Transport, atrakcje i budżet — bez rezerwacji</small></span><span>＋</span></summary><div class="rest-body">
     <p id="planTargetNote" class="src"></p>
-    <label>Budżet całego wyjazdu (zł)<input type="number" name="budget" min="0" step="100" placeholder="np. 3000"></label>
+    <label>Budżet całego wyjazdu (zł)<input form="f" type="number" name="budget" min="0" step="100" placeholder="np. 3000"></label>
+    <section class="planned-extras"><h3>Pozostałe koszty planowane</h3><p class="src">Opcjonalne własne kwoty / szacunki dla całej grupy i całego pobytu — nie ceny pobrane z serwisów. Niewpisane koszty nie są doliczane.</p><div class="grid2"><label>Transport (PLN)<input form="f" type="number" name="budgetTransport" min="0" max="1000000" step="0.01" placeholder="nie podano"></label><label>Posiłki (PLN)<input form="f" type="number" name="budgetFood" min="0" max="1000000" step="0.01" placeholder="nie podano"></label><label>Atrakcje (PLN)<input form="f" type="number" name="budgetAttractions" min="0" max="1000000" step="0.01" placeholder="nie podano"></label><label>Inne (PLN)<input form="f" type="number" name="budgetOther" min="0" max="1000000" step="0.01" placeholder="nie podano"></label></div></section>
     <details class="fs" data-step="4">
       <summary><h2><span class="num">4</span> Nocleg</h2><span class="sum" data-sum="4"></span></summary>
       <div class="fs-body">
       <div class="grid3">
-        <label>Typ<select name="accType"><option value="dowolny">Dowolny</option><option value="hotel">Hotel</option><option value="apartament">Apartament</option><option value="hostel">Hostel</option></select></label>
-        <label>Śniadanie<select name="breakfast"><option value="obojętne">Obojętne</option><option value="tak">Tak, ze śniadaniem</option><option value="nie">Bez śniadania</option></select></label>
-        <label>Odległość<select name="distance"><option value="any">Bez znaczenia</option><option value="c1">Do 1 km od centrum</option><option value="c3">Do 3 km od centrum</option><option value="c5">Do 5 km od centrum</option><option value="airport">Blisko lotniska</option></select></label>
+        <label>Typ<select form="f" name="accType"><option value="dowolny">Dowolny</option><option value="hotel">Hotel</option><option value="apartament">Apartament</option><option value="hostel">Hostel</option></select></label>
+        <label>Śniadanie<select form="f" name="breakfast"><option value="obojętne">Obojętne</option><option value="tak">Tak, ze śniadaniem</option><option value="nie">Bez śniadania</option></select></label>
+        <label>Odległość<select form="f" name="distance"><option value="any">Bez znaczenia</option><option value="c1">Do 1 km od centrum</option><option value="c3">Do 3 km od centrum</option><option value="c5">Do 5 km od centrum</option><option value="airport">Blisko lotniska</option></select></label>
       </div>
     </div>
     </details>
@@ -90,19 +95,19 @@
       <div class="fs-body">
       <p class="hint">Atrakcje (możesz wybrać kilka)</p>
       <div class="chips" id="attr">
-        <label><input type="checkbox" name="attractions" value="plaze" checked><span>🏖️ Plaże</span></label>
-        <label><input type="checkbox" name="attractions" value="skutery"><span>🛵 Skutery</span></label>
-        <label><input type="checkbox" name="attractions" value="zwiedzanie" checked><span>🏛️ Zwiedzanie</span></label>
-        <label><input type="checkbox" name="attractions" value="jedzenie" checked><span>🍝 Jedzenie</span></label>
+        <label><input form="f" type="checkbox" name="attractions" value="plaze" checked><span>🏖️ Plaże</span></label>
+        <label><input form="f" type="checkbox" name="attractions" value="skutery"><span>🛵 Skutery</span></label>
+        <label><input form="f" type="checkbox" name="attractions" value="zwiedzanie" checked><span>🏛️ Zwiedzanie</span></label>
+        <label><input form="f" type="checkbox" name="attractions" value="jedzenie" checked><span>🍝 Jedzenie</span></label>
       </div>
       <p class="hint">Transfery i transport na miejscu</p>
       <div class="chips" id="tr">
-        <label><input type="checkbox" name="transport" value="bus" checked><span>🚌 Autobus / komunikacja</span></label>
-        <label><input type="checkbox" name="transport" value="taxi"><span>🚕 Taksówka</span></label>
-        <label><input type="checkbox" name="transport" value="car"><span>🚗 Wynajem auta</span></label>
-        <label><input type="checkbox" name="transport" value="scooter"><span>🛵 Skuter</span></label>
-        <label><input type="checkbox" name="transport" value="ebike"><span>⚡ Rower elektryczny (e-bike)</span></label>
-        <label><input type="checkbox" name="transport" value="bike"><span>🚲 Rower (zwykły)</span></label>
+        <label><input form="f" type="checkbox" name="transport" value="bus" checked><span>🚌 Autobus / komunikacja</span></label>
+        <label><input form="f" type="checkbox" name="transport" value="taxi"><span>🚕 Taksówka</span></label>
+        <label><input form="f" type="checkbox" name="transport" value="car"><span>🚗 Wynajem auta</span></label>
+        <label><input form="f" type="checkbox" name="transport" value="scooter"><span>🛵 Skuter</span></label>
+        <label><input form="f" type="checkbox" name="transport" value="ebike"><span>⚡ Rower elektryczny (e-bike)</span></label>
+        <label><input form="f" type="checkbox" name="transport" value="bike"><span>🚲 Rower (zwykły)</span></label>
       </div>
     </div>
     </details>
@@ -110,9 +115,6 @@
 
     <div id="groups"></div><div class="card" id="budgetCard"></div><div class="card" id="weatherCard"></div><div class="card" id="planCard"></div>
     </div></details>
-  </section>
-</form>
-<section id="hotelSection" aria-label="Wyszukiwarka hoteli"></section>
 </main>
 
 <div class="overlay" id="reportView" hidden>
@@ -130,6 +132,7 @@
 
 <div class="upd" id="updBar" hidden>Nowa wersja aplikacji jest gotowa. <button type="button" class="btn small primary" id="updBtn">Odśwież</button></div>
 <nav class="bar" aria-label="Akcje">
+  <section id="tripBudget" class="trip-budget" aria-label="Podsumowanie wybranych kosztów" hidden></section>
   <button type="button" class="btn primary" id="barLinks">🔎 Szukaj</button>
   <button type="button" class="btn dark" id="genReport" disabled>📄 Raport</button>
   <button type="button" class="btn dark" id="pdf" disabled>⬇️ PDF</button>
@@ -141,17 +144,18 @@
   <div class="ver" id="ver"></div>
 </footer>
 
-<script src="js/version.js?v=1.7"></script>
-<script src="js/data.js?v=1.7"></script>
-<script src="assets/data/airports-fallback.js?v=1.7"></script>
-<script src="js/airports.js?v=1.7"></script>
-<script src="js/logic.js?v=1.7"></script>
-<script src="js/flights.js?v=1.7"></script>
-<script src="js/other-flights.js?v=1.7"></script>
-<script src="js/hotels.js?v=1.7"></script>
-<script src="js/report.js?v=1.7"></script>
-<script src="js/pdf.js?v=1.7"></script>
-<script src="js/search-ui.js?v=1.7"></script>
-<script src="js/app.js?v=1.7"></script>
+<script src="js/version.js?v=1.8"></script>
+<script src="js/data.js?v=1.8"></script>
+<script src="assets/data/airports-fallback.js?v=1.8"></script>
+<script src="js/airports.js?v=1.8"></script>
+<script src="js/logic.js?v=1.8"></script>
+<script src="js/flights.js?v=1.8"></script>
+<script src="js/other-flights.js?v=1.8"></script>
+<script src="js/budget.js?v=1.8"></script>
+<script src="js/hotels.js?v=1.8"></script>
+<script src="js/report.js?v=1.8"></script>
+<script src="js/pdf.js?v=1.8"></script>
+<script src="js/search-ui.js?v=1.8"></script>
+<script src="js/app.js?v=1.8"></script>
 </body>
 </html>
