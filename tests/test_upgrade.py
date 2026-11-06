@@ -13,7 +13,7 @@ def serve_old(route):
 with sync_playwright() as pw:
     b = pw.chromium.launch(executable_path='/usr/bin/google-chrome', args=['--no-sandbox'])
     ud = '/tmp/upgrade-profile'; os.system(f'rm -rf {ud}')
-    ctx = pw.chromium.launch_persistent_context(ud, executable_path='/usr/bin/google-chrome', args=['--no-sandbox'], **pw.devices['iPhone 13'], locale='pl-PL', service_workers='allow')
+    ctx = pw.chromium.launch_persistent_context(ud, executable_path='/usr/bin/google-chrome', args=['--no-sandbox'], **{k: v for k, v in pw.devices['iPhone 13'].items() if k != 'default_browser_type'}, locale='pl-PL', service_workers='allow')
     ctx.route('**/andrzejsowa/**', serve_old)
     p = ctx.pages[0] if ctx.pages else ctx.new_page()
     p.goto(U, wait_until='networkidle'); p.wait_for_timeout(1500)
