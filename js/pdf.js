@@ -107,7 +107,19 @@ window.PDFR = (() => {
       { columnStyles: { 0: { cellWidth: 30 }, 1: { cellWidth: 34 }, 3: { cellWidth: 22 } }, ...linkCol(3, xi.map(i => reg(i.label, i.url)), () => 'Sprawdź →') });
     if (dest.xfer) para(dest.xfer + ' Rozkłady i ceny sprawdź przed wyjazdem.', M, CW, 6.8, 'normal', MUTED);
 
-    h2('Loty');
+    const FLs = c.fl && c.fl.results ? c.fl : null, F = window.FL;
+    h2(`Loty – znalezione (Ryanair${FLs ? ', ceny z dnia ' + F.stamp(FLs.checkedAt) : ''})`);
+    if (!FLs) para('Wyszukiwanie lotów nie zakończyło się (brak połączenia) – użyj linków poniżej.', M, CW, 7.5, 'bold', [122, 42, 28]);
+    else {
+      if (FLs.message) para(FLs.message, M, CW, 7.5, 'bold', [122, 42, 28]);
+      const alt = !FLs.exactFound ? [...FLs.alternatives.otherAirports.slice(0, 3), ...FLs.alternatives.nearbyDest.slice(0, 3)] : [];
+      const rr = [...FLs.results.slice(0, 6), ...alt];
+      if (rr.length) table(['Kierunek', 'Data', 'Godziny', 'Przewoźnik', `Cena${persons > 1 ? ` (${persons} os.)` : ''}`, ''],
+        rr.map(r => [`${r.from} ↔ ${r.to}${r.exact ? '\nTwoje daty' : ''}${FLs.results.includes(r) ? '' : r.km ? `\nalternatywa: ${r.toName} ${r.km} km` : '\nalternatywa: inne lotnisko'}`, `${F.fmtDate(r.out)}\n${F.fmtDate(r.back)}`, `${F.hm(r.outDep)}–${F.hm(r.outArr)}\n${F.hm(r.inDep)}–${F.hm(r.inArr)}`, 'Ryanair\nbez przesiadek', `${F.zl2(r.total)}${persons > 1 ? `\n${F.zl2(r.perPerson)}/os.` : ''}`, '']),
+        { columnStyles: { 0: { cellWidth: 44, textColor: ACCENT, fontStyle: 'bold' }, 4: { fontStyle: 'bold' }, 5: { cellWidth: 22 } }, ...merge(linkCol(5, rr.map(r => reg(`Ryanair ${r.from}→${r.to} ${r.out}/${r.back}`, r.url)), () => 'Rezerwuj →'), nameLinks(0, rr.map(r => r.url))) });
+      para(`Prawdziwe ceny z publicznego API Ryanair (najtańszy lot danego dnia), pobrane ${F.stamp(FLs.checkedAt)}. Cena łączna = taryfa za osobę × ${persons}; zwykle bez bagażu rejestrowanego. Wizz Air i inne linie – linki poniżej.`, M, CW, 6.8, 'normal', MUTED);
+    }
+    h2('Inne wyszukiwarki lotów');
     const lim = f.origin === 'ALL' ? 12 : 8, fl = G('loty').items, flShow = fl.slice(0, lim);
     table(['Trasa / serwis', 'Daty', 'Uwagi', 'Cena', ''], flShow.map(i => [i.label, dt.mode === 'month' ? `${L.MONTHS[dt.m - 1]} ${dt.y}` : `${L.dm(dt.start)} ↔ ${L.dm(dt.end)}`, i.note || '', 'sprawdź w linku', '']),
       { columnStyles: { 0: { cellWidth: 62, textColor: ACCENT, fontStyle: 'bold' }, 1: { cellWidth: 28 }, 3: { cellWidth: 24, textColor: MUTED }, 4: { cellWidth: 22 } }, ...merge(linkCol(4, flShow.map(i => reg(i.label, i.url)), () => 'Rezerwuj →'), nameLinks(0, flShow.map(i => i.url))) });

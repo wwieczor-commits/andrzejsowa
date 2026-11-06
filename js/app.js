@@ -120,6 +120,54 @@
       <p class="src">${esc(w.source)}${w.sea ? ` · morze ok. ${Math.round(w.sea)}°C (te same dni rok wcześniej)` : ''}. Dane: Open-Meteo.com (CC BY 4.0).</p>`;
   }
 
+  // --- prawdziwe loty (Ryanair API) ---
+  const F = window.FL;
+  function legHtml(label, date, dep, arr, from, to) {
+    return `<div class="fl-leg"><span class="d">${label} ${esc(F.fmtDate(date))}</span><span class="t">${esc(F.hm(dep))} → ${esc(F.hm(arr))}</span><span class="r">${esc(from)} → ${esc(to)}</span></div>`;
+  }
+  function flCard(r, extra = '') {
+    const n = F.pax(ctx.f);
+    return `<div class="fl-card${r.exact ? ' exact' : ''}" data-total="${r.total}">
+      <div class="fl-top"><div><span class="fl-air">✈️ ${esc(r.airline)} · bez przesiadek</span>${r.exact ? '<span class="fl-badge">Twoje daty</span>' : ''}${extra}</div>
+      <div><div class="fl-price">${F.zl2(r.total)}</div><div class="fl-pp">${n > 1 ? `${F.zl2(r.perPerson)} / os. × ${n}` : 'za osobę, tam i z powrotem'}</div></div></div>
+      ${legHtml('Wylot', r.out, r.outDep, r.outArr, r.from, r.to)}
+      ${legHtml('Powrót', r.back, r.inDep, r.inArr, r.to, r.from)}
+      <a class="fl-book" href="${esc(r.url)}" target="_blank" rel="noopener">Rezerwuj w Ryanair →</a></div>`;
+  }
+  function renderFlights() {
+    const el = $('#flightsCard'), c = ctx; el.hidden = false;
+    const fl = c.fl;
+    if (!fl || fl.loading) { el.innerHTML = `<div class="fl-head"><h3>✈️ Znalezione loty</h3></div><div class="fl-load"><span class="spin"></span><span id="flProg">${esc((fl && fl.progress) || 'Szukam lotów…')}</span></div>`; return; }
+    if (fl.failed) { el.innerHTML = `<h3>✈️ Znalezione loty</h3><div class="fl-msg">Nie udało się połączyć z wyszukiwarką lotów (brak internetu?). Spróbuj ponownie albo użyj linków poniżej.</div><button class="btn ghost fl-more" id="flRetry">Spróbuj ponownie</button>`; $('#flRetry').onclick = () => run(); return; }
+    const r = fl.results;
+    let h = `<div class="fl-head"><h3>✈️ Znalezione loty</h3></div><p class="fl-stamp">Ceny z dnia ${esc(F.stamp(fl.checkedAt))} · źródło: ${esc(fl.source)} · ${r.length} ${r.length === 1 ? 'wynik' : 'wyników'}, od najtańszego</p>`;
+    if (fl.message) h += `<div class="fl-msg">${esc(fl.message)}</div>`;
+    if (r.length) {
+      h += r.slice(0, 6).map(x => flCard(x)).join('');
+      if (r.length > 6) h += `<details class="more"><summary>Pokaż więcej wyników (${r.length - 6})</summary>${r.slice(6, 40).map(x => flCard(x)).join('')}</details>`;
+    }
+    const A = fl.alternatives || {};
+    if (!fl.exactFound && (A.otherAirports.length || A.nearbyDest.length)) {
+      h += `<div class="fl-alt">`;
+      if (A.otherAirports.length) {
+        const best = {}; A.otherAirports.forEach(x => { if (!best[x.from]) best[x.from] = x; });
+        h += `<h4>💡 Z innych lotnisk w Polsce</h4>` + Object.values(best).slice(0, 4).map(x => flCard(x, '') + `<button class="btn ghost use" data-origin="${x.from}">Szukaj z ${esc((AIRPORTS.find(a => a.code === x.from) || {}).name || x.from)} (${x.from})</button>`).join('');
+      }
+      if (A.nearbyDest.length) {
+        const best = {}; A.nearbyDest.forEach(x => { const k = x.from + x.to; if (!best[k]) best[k] = x; });
+        h += `<h4>💡 Pobliskie lotniska docelowe</h4>` + Object.values(best).slice(0, 4).map(x => flCard(x, `<span class="fl-badge" style="background:#3b82f6">${esc(x.toName)} · ${x.km} km</span>`) + `<button class="btn ghost use" data-dest="${x.to}" data-origin="${x.from}">Szukaj do ${esc(x.toName)} (${x.to})</button>`).join('');
+      }
+      h += `</div>`;
+    } else if (!r.length && !fl.message) h += `<div class="fl-msg">Brak wyników.</div>`;
+    h += `<p class="fl-note">Wyszukiwanie obejmuje loty bezpośrednie Ryanair (najtańszy lot danego dnia). Wizz Air i inne linie – sprawdź linkami poniżej. Cena łączna = taryfa za osobę × liczba osób, bez bagażu rejestrowanego; ostateczną cenę pokaże strona przewoźnika.</p>`;
+    el.innerHTML = h;
+    el.querySelectorAll('.use').forEach(b => b.onclick = () => {
+      if (b.dataset.origin) $('#origin').value = b.dataset.origin;
+      if (b.dataset.dest) { const d = DEST.find(x => x.iata === b.dataset.dest || (x.alt || []).includes(b.dataset.dest)); $('#dest').value = d ? `${d.name} (${d.iata})` : b.dataset.dest; }
+      save(); sums(); run().then(() => $('#flightsCard').scrollIntoView({ behavior: 'smooth', block: 'start' }));
+    });
+  }
+
   async function run() {
     const f = read();
     if (!f.dest || !f.dest.trim()) { steps[0].open = true; $('#err').textContent = 'Wpisz cel podróży (np. Katania) albo wybierz z podpowiedzi.'; $('#err').hidden = false; $('#dest').focus(); return null; }
@@ -127,12 +175,15 @@
     $('#err').hidden = true; save();
     ctx = compute(); render();
     const my = ctx;
+    my.fl = { loading: true, progress: 'Szukam lotów…' }; renderFlights();
+    my.flPromise = F.search(my, m => { if (ctx === my && my.fl && my.fl.loading) { my.fl.progress = m; const p = document.getElementById('flProg'); if (p) p.textContent = m; } })
+      .then(r => { my.fl = r; }).catch(() => { my.fl = { failed: true }; }).finally(() => { if (ctx === my) renderFlights(); });
     my.wxPromise = L.weather(my.dest, my.dt).then(w => { my.wx = w; }).catch(() => { my.wx = null; }).finally(() => { if (ctx === my) renderWeather(); });
     return ctx;
   }
   form.addEventListener('submit', async e => { e.preventDefault(); if (await run()) $('#summary').scrollIntoView({ behavior: 'smooth', block: 'start' }); });
 
-  async function ready() { if (!ctx) await run(); if (!ctx) return null; await Promise.race([ctx.wxPromise, new Promise(r => setTimeout(r, 8000))]); return ctx; }
+  async function ready() { if (!ctx) await run(); if (!ctx) return null; await Promise.race([Promise.all([ctx.wxPromise, ctx.flPromise]), new Promise(r => setTimeout(r, 30000))]); return ctx; }
 
   // --- raport HTML (A4) ---
   let lastHtml = '';
@@ -156,5 +207,5 @@
   $('#pdf2').addEventListener('click', e => doPdf(e.currentTarget));
 
   if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => { });
-  window.__planer = { run, get ctx() { return ctx; } };
+  window.__planer = { run, ready, get ctx() { return ctx; } };
 })();

@@ -45,6 +45,14 @@ def run(pw, name, ctx_opts, browser):
     pg.click('#barLinks')
     pg.wait_for_selector('#groups a.lnk')
     pg.wait_for_function('() => !document.querySelector("#weatherCard").textContent.includes("Ładowanie")', timeout=20000)
+    pg.wait_for_selector('#flightsCard .fl-stamp', timeout=60000)
+    ftxt = pg.inner_text('#flightsCard')
+    ok('Ceny z dnia' in ftxt and pg.locator('#flightsCard .fl-card.exact').count() >= 1, 'Loty: prawdziwe wyniki Ryanair KRK→CTA w Twoich datach')
+    prices = [float(x) for x in pg.eval_on_selector_all('#flightsCard > .fl-card', 'els => els.map(e => e.dataset.total)')]
+    ok(prices == sorted(prices) and len(prices) > 0, f'Loty: sortowane po cenie {prices[:4]}')
+    fb = pg.get_attribute('#flightsCard .fl-card.exact a.fl-book', 'href')
+    ok('ryanair.com' in fb and 'dateOut=2026-11-16' in fb and 'adults=2' in fb and 'children=1' in fb, 'Loty: link Rezerwuj do Ryanair z datami i osobami')
+    pg.locator('#flightsCard').screenshot(path=f'{SHOTS}/{name}-8-loty-wyniki.png')
     L = links(pg); G = {}
     for l in L: G.setdefault(l['g'], []).append(l)
     gf = [l['u'] for l in L if 'google.com/travel/flights' in l['u']][0]
@@ -79,6 +87,7 @@ def run(pw, name, ctx_opts, browser):
     ok('Podsumowanie kosztów' in rt and 'Harmonogram' in rt and 'Loty' in rt and 'Nocleg' in rt and 'Plan dnia po dniu' in rt and 'Praktyczne' in rt, 'Raport: sekcje jak we wzorze')
     ok('Rezerwuj →' in rt and 'Wypożyczalnie skuterów' in rt and 'Rower elektryczny (e-bike)' in rt and 'Rower (zwykły)' in rt, 'Raport: Rezerwuj, skutery, e-bike, rower')
     ok('Rent in Catania' in rt, 'Raport: zweryfikowane firmy dla Katanii')
+    ok('Loty – znalezione (Ryanair, ceny z dnia' in rt and 'bez przesiadek' in rt and 'najtańszy znaleziony lot' in rt.lower(), 'Raport: prawdziwe loty w tabeli')
     pg.screenshot(path=f'{SHOTS}/{name}-7-raport.png')
     # PDF
     with pg.expect_event('download' if 'iphone' not in name else 'popup', timeout=30000) as ev:
@@ -93,6 +102,15 @@ def run(pw, name, ctx_opts, browser):
     # localStorage
     pg.reload(wait_until='networkidle')
     ok(pg.input_value('#dest').startswith('Katania') and pg.input_value('[name=adults]') == '2' and pg.is_checked('#tr input[value=ebike]'), 'Formularz zapamiętany (localStorage)')
+    # trasa bez lotów: Lublin → Katania
+    pg.select_option('#origin', 'LUZ'); pg.click('#barLinks')
+    pg.wait_for_selector('#flightsCard .fl-stamp', timeout=90000)
+    ftxt = pg.inner_text('#flightsCard')
+    ok('Brak lotów Ryanair z Lublin (LUZ) do Katania' in ftxt, 'Brak lotów: komunikat po polsku')
+    ok('Z innych lotnisk w Polsce' in ftxt and pg.locator('#flightsCard .use').count() >= 1, 'Brak lotów: alternatywy z innych lotnisk')
+    pg.locator('#flightsCard').screenshot(path=f'{SHOTS}/{name}-9-brak-lotow.png')
+    pg.locator('#flightsCard .use').first.click(); pg.wait_for_selector('#flightsCard .fl-card.exact', timeout=60000)
+    ok(pg.input_value('#origin') != 'LUZ', 'Alternatywa: przycisk „Szukaj z …” zmienia lotnisko i szuka')
     # tryb miesiąc + wszystkie lotniska
     pg.select_option('#origin', 'ALL')
     pg.click('details[data-step="2"] summary'); pg.click('.seg label:has(input[value=month])'); pg.fill('#month', '2027-02'); pg.fill('[name=nights]', '5')
@@ -101,6 +119,10 @@ def run(pw, name, ctx_opts, browser):
     ok(any('/transport/loty/pl/cta/' in l['u'] and 'oym=2702' in l['u'] for l in L2), 'Miesiąc + wszystkie: Skyscanner z całej Polski, cały miesiąc')
     ok(sum(1 for l in L2 if 'google.com/travel/flights' in l['u']) == 15, 'Miesiąc + wszystkie: Google Flights dla każdego z 15 lotnisk')
     ok(any('fare-finder' in l['u'] and 'daysTrip=5' in l['u'] for l in L2), 'Miesiąc: Ryanair fare-finder')
+    pg.wait_for_selector('#flightsCard .fl-stamp', timeout=90000)
+    froms = pg.eval_on_selector_all('#flightsCard > .fl-card .fl-leg .r', 'els => els.map(e => e.textContent)')
+    ok(len(froms) > 0, f'Miesiąc + wszystkie lotniska: wyniki {froms[:4]}')
+    pg.locator('#flightsCard').screenshot(path=f'{SHOTS}/{name}-10-miesiac-wszystkie.png')
     ok(not errs, f'brak błędów JS {errs[:2]}')
     ctx.close()
 
@@ -123,7 +145,7 @@ with sync_playwright() as pw:
     ctx = ch.new_context(viewport={'width': 1280, 'height': 900}, locale='pl-PL', timezone_id='Europe/Warsaw'); pg = ctx.new_page()
     pg.goto(URL, wait_until='networkidle')
     fill(pg); pg.click('#barLinks'); pg.wait_for_selector('#groups a.lnk')
-    pg.wait_for_function('() => window.__planer.ctx && window.__planer.ctx.wx', timeout=20000)
+    pg.evaluate('() => window.__planer.ready()')
     html = pg.evaluate('() => window.REPORT.html(window.__planer.ctx)')
     rp = ctx.new_page(); rp.set_viewport_size({'width': 794, 'height': 1123}); rp.goto(URL); rp.set_content(html, wait_until='networkidle')
     rp.screenshot(path=f'{SHOTS}/{TAG}-raport-A4-html.png', full_page=True)
